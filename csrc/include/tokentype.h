@@ -1,6 +1,8 @@
+
+#pragma once
 namespace Lexeme {
 
-enum TokenType {
+enum class TokenType {
 
   // Single-character tokens.
   LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
@@ -19,6 +21,6 @@ enum TokenType {
   AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
   PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
 
-  EOF
+  _EOF
 };
 }
