@@ -1,0 +1,58 @@
+// 基本表达式
+1 + 2
+
+// 变量声明
+var a = 1;
+
+// 字符串
+"hello world"
+
+// 标识符和关键字
+var myVariable = 10;
+if (x > 5) {
+  print "large";
+}
+
+// 注释
+// This is a comment
+var x = 1; // inline comment
+
+// 多字符运算符
+!= == <= >= 
+
+// 数字
+123
+123.456
+0.5
+
+// 复杂表达式
+var result = (a + b) * c / d - e;
+
+// 布尔值和 nil
+true false nil
+
+// 函数相关
+fun add(a, b) {
+  return a + b;
+}
+
+// 类
+class MyClass {
+  init() {
+    this.value = 0;
+  }
+}
+
+// 循环
+for (var i = 0; i < 10; i = i + 1) {
+  print i;
+}
+
+while (x > 0) {
+  x = x - 1;
+}
+
+// 逻辑运算符
+true and false
+true or false
+!true
