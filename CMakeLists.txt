@@ -16,11 +16,14 @@ set(SOURCES
 # 创建主可执行文件
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+
 # 设置 include 目录
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/csrc/include
 )
-
+add_library(token_lib csrc/token.cpp)
+add_executable(test_ast_printer csrc/expr.cpp)
+target_link_libraries(test_ast_printer token_lib)
 # 编译选项
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4)

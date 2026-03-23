@@ -12,7 +12,7 @@ using Literal = std::variant<double, std::string_view, std::monostate>;
 std::ostream &operator<<(std::ostream &os, const Token &token);
 std::string literal_to_str(Literal literal);
 
-class Token {
+struct Token {
   TokenType type;
   std::string_view lexeme;
   Literal literal;

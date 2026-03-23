@@ -110,7 +110,7 @@ public:
       return;
     }
 
-    advance(); // 消费结束的 "
+    advance(); 
     
     std::string_view value(source.data() + start + 1, current - start - 2);
     addToken(TokenType::STRING, value);

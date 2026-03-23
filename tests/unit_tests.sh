@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 单元测试脚本 - 使用文件输入版本
+# 统一单元测试脚本 - Scanner + ASTPrinter
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -14,82 +14,137 @@ TESTS_FAILED=0
 # 获取项目根目录的绝对路径
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# 测试函数 - 使用文件输入
-test_case() {
+# ========================================
+# 通用测试函数
+# ========================================
+
+# Scanner 测试: 比较 Java Lox 和 C++ craftinginterpreter 的 scanner 输出
+test_scanner() {
     local test_name="$1"
     local input="$2"
     
-    echo -e "\n${BLUE}测试: ${test_name}${NC}"
-    echo "输入: $input"
+    echo -e "  ${BLUE}[Scanner] ${test_name}${NC}"
     
-    # 创建临时测试文件
     local test_file="/tmp/scanner_test_$$.lox"
     echo "$input" > "$test_file"
     
-    # 运行 Java
     cd "$PROJECT_ROOT"
     java_output=$(java -cp . lox.Lox "$test_file" 2>&1)
-    
-    # 运行 C++
     cpp_output=$("$PROJECT_ROOT/build/craftinginterpreter" "$test_file" 2>&1)
     
-    # 清理
     rm -f "$test_file"
     
-    # 比较
     if [ "$java_output" = "$cpp_output" ]; then
-        echo -e "${GREEN}✓ PASS${NC}"
+        echo -e "  ${GREEN}✓ PASS${NC}"
         ((TESTS_PASSED++))
     else
-        echo -e "${RED}✗ FAIL${NC}"
-        echo "Java 输出:"
-        echo "$java_output"
-        echo ""
-        echo "C++ 输出:"
-        echo "$cpp_output"
+        echo -e "  ${RED}✗ FAIL${NC}"
+        echo "    Java: $java_output"
+        echo "    C++:  $cpp_output"
         ((TESTS_FAILED++))
     fi
 }
 
+# ASTPrinter 测试: 比较 Java AstPrinter 和 C++ test_ast_printer 的输出
+test_ast_printer() {
+    echo -e "  ${BLUE}[ASTPrinter] C++ vs Java 输出一致性${NC}"
+    
+    cd "$PROJECT_ROOT"
+    java_output=$(java -cp . lox.AstPrinter 2>&1)
+    cpp_output=$("$PROJECT_ROOT/build/test_ast_printer" 2>&1)
+    
+    if [ "$java_output" = "$cpp_output" ]; then
+        echo -e "  ${GREEN}✓ PASS${NC}  output: $cpp_output"
+        ((TESTS_PASSED++))
+    else
+        echo -e "  ${RED}✗ FAIL${NC}"
+        echo "    Java: $java_output"
+        echo "    C++:  $cpp_output"
+        ((TESTS_FAILED++))
+    fi
+}
+
+# ========================================
 # 编译
+# ========================================
+
 echo -e "${YELLOW}编译程序...${NC}"
 cd "$PROJECT_ROOT"
-./build_mac.sh > /dev/null 2>&1
-cd "$PROJECT_ROOT/lox" && javac *.java && cd "$PROJECT_ROOT"
+
+# 编译 C++ (cmake)
+cd build && cmake --build . > /dev/null 2>&1
+cmake_rc=$?
+cd "$PROJECT_ROOT"
+if [ $cmake_rc -ne 0 ]; then
+    echo -e "${RED}C++ cmake 编译失败, 尝试重新配置...${NC}"
+    ./build_mac.sh > /dev/null 2>&1
+fi
+
+# 编译 Java
+cd "$PROJECT_ROOT/lox" && javac *.java 2>/dev/null
+cd "$PROJECT_ROOT"
+
+echo -e "${GREEN}编译完成${NC}"
+
+# ========================================
+# ASTPrinter 测试
+# ========================================
 
 echo -e "\n${YELLOW}========================================"
-echo "开始单元测试"
+echo "ASTPrinter 测试"
 echo "========================================${NC}"
 
-# 测试用例
-test_case "整数" "123;"
-test_case "浮点数" "123.456;"
-test_case "字符串" '"hello world";'
-test_case "变量声明" "var x = 10;"
-test_case "算术表达式" "1 + 2 * 3;"
-test_case "比较运算符" "x > 5;"
-test_case "相等运算符" "x == 10;"
-test_case "不等运算符" "x != 5;"
-test_case "逻辑运算符" "true and false;"
-test_case "括号表达式" "(1 + 2) * 3;"
-test_case "标识符" "myVariable;"
-test_case "关键字 if" "if (x > 0) {}"
-test_case "关键字 while" "while (true) {}"
-test_case "关键字 for" "for (;;) {}"
-test_case "关键字 fun" "fun add() {}"
-test_case "关键字 class" "class MyClass {}"
-test_case "关键字 return" "return 42;"
-test_case "关键字 print" "print x;"
-test_case "布尔值 true" "true;"
-test_case "布尔值 false" "false;"
-test_case "nil" "nil;"
-test_case "注释" "// comment
-var x = 1;"
-test_case "多行" "var a = 1;
-var b = 2;"
-test_case "复杂表达式" "var result = (a + b) * c / d - e;"
+test_ast_printer
 
+# ========================================
+# Scanner 测试
+# ========================================
+
+echo -e "\n${YELLOW}========================================"
+echo "Scanner 测试"
+echo "========================================${NC}"
+
+# 基本类型
+test_scanner "整数" "123;"
+test_scanner "浮点数" "123.456;"
+test_scanner "字符串" '"hello world";'
+
+# 变量与表达式
+test_scanner "变量声明" "var x = 10;"
+test_scanner "算术表达式" "1 + 2 * 3;"
+test_scanner "括号表达式" "(1 + 2) * 3;"
+test_scanner "复杂表达式" "var result = (a + b) * c / d - e;"
+
+# 运算符
+test_scanner "比较运算符" "x > 5;"
+test_scanner "相等运算符" "x == 10;"
+test_scanner "不等运算符" "x != 5;"
+test_scanner "逻辑运算符" "true and false;"
+
+# 关键字
+test_scanner "if" "if (x > 0) {}"
+test_scanner "while" "while (true) {}"
+test_scanner "for" "for (;;) {}"
+test_scanner "fun" "fun add() {}"
+test_scanner "class" "class MyClass {}"
+test_scanner "return" "return 42;"
+test_scanner "print" "print x;"
+
+# 字面量
+test_scanner "true" "true;"
+test_scanner "false" "false;"
+test_scanner "nil" "nil;"
+
+# 多行与注释
+test_scanner "注释" "// comment
+var x = 1;"
+test_scanner "多行" "var a = 1;
+var b = 2;"
+
+# ========================================
 # 总结
+# ========================================
+
 echo -e "\n${YELLOW}========================================"
 echo "测试总结"
 echo "========================================${NC}"
