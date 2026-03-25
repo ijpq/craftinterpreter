@@ -34,11 +34,10 @@ struct Expr {
 
 struct Binary : Expr {
 
-  Expr *left;
+  std::unique_ptr<Expr> left;
   Token op;
-  Expr *right;
-  Binary(Expr *left, Token op, Expr *right)
-      : left(left), op(op), right(right) {}
+  std::unique_ptr<Expr> right;
+  Binary(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right) : left(std::move(left)), op(op), right(std::move(right)) {}
 
   std::string accept(Visitor *visitor) override {
     return visitor->visitBinaryExpr(this);
@@ -46,9 +45,9 @@ struct Binary : Expr {
 };
 
 struct Grouping : Expr {
-  Expr *expression;
+  std::unique_ptr<Expr> expression;
 
-  Grouping(Expr *expression) : expression(expression) {}
+  Grouping(std::unique_ptr<Expr> expression) : expression(std::move(expression)) {}
   Visitor::ReturnType accept(Visitor *visitor) override {
     return visitor->visitGroupingExpr(this);
   }
@@ -63,12 +62,12 @@ struct Literal : Expr {
 };
 
 struct Unary : Expr {
-	Unary(Token op, Expr* right) :
-	op(op), right(right) {}
+	Unary(Token op, std::unique_ptr<Expr> right) :
+	op(op), right(std::move(right)) {}
 	Visitor::ReturnType accept(Visitor* visitor) override {
 		return visitor->visitUnaryExpr(this);
 	}
 	Token op;
-	Expr* right;
+	std::unique_ptr<Expr> right;
 };
 } // namespace syntax
