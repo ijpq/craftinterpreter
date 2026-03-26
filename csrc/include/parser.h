@@ -15,9 +15,7 @@ using syntax::Binary;
 using syntax::Expr;
 namespace syntax {
 struct ParserError : std::exception {
-  ParserError(Token token, std::string error) {
-    Lox::error(token, error);
-  }
+  ParserError(Token token, std::string error) { Lox::error(token, error); }
 };
 struct Parser {
   int current = 0;
@@ -25,9 +23,7 @@ struct Parser {
 
   Parser(std::vector<Token> tokens) : tokens(tokens) {}
 
-  bool isAtEnd() {
-    return peek().type == TokenType::_EOF;
-  }
+  bool isAtEnd() { return peek().type == TokenType::_EOF; }
   inline void advance() { current++; }
   bool match(std::initializer_list<TokenType> types) {
     for (auto type : types) {
@@ -38,7 +34,7 @@ struct Parser {
     }
     return false;
   }
-  Token &peek() {return tokens[current];}
+  Token &peek() { return tokens[current]; }
   Token &previous() { return tokens[current - 1]; }
 
   std::unique_ptr<Expr> expression() { return std::move(equality()); }
@@ -147,8 +143,9 @@ struct Parser {
   void synchronize() {
     advance();
     while (!isAtEnd()) {
-      if (previous().type == TokenType::SEMICOLON) return ;
-      switch(peek().type) {
+      if (previous().type == TokenType::SEMICOLON)
+        return;
+      switch (peek().type) {
       case TokenType::CLASS:
       case TokenType::FUN:
       case TokenType::VAR:
@@ -157,7 +154,7 @@ struct Parser {
       case TokenType::WHILE:
       case TokenType::PRINT:
       case TokenType::RETURN:
-          return;
+        return;
       default:
         advance();
       }
@@ -167,7 +164,7 @@ struct Parser {
   std::unique_ptr<Expr> parse() {
     try {
       return std::move(expression());
-    } catch (ParserError& e) {
+    } catch (ParserError &e) {
       return nullptr;
     }
   }

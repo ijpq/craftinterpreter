@@ -1,7 +1,7 @@
 #include "include/token.h"
-#include <sstream>
-#include <iomanip>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 
 namespace Lexeme {
 
@@ -11,18 +11,18 @@ std::string double_to_string(double value) {
     oss << std::fixed << std::setprecision(1) << value;
     return oss.str();
   }
-  
+
   std::ostringstream oss;
   oss << value;
   std::string result = oss.str();
-  
+
   if (result.find('.') != std::string::npos) {
-    while (result.length() > 1 && result.back() == '0' && 
+    while (result.length() > 1 && result.back() == '0' &&
            result[result.length() - 2] != '.') {
       result.pop_back();
     }
   }
-  
+
   return result;
 }
 

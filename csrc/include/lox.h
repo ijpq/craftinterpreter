@@ -1,12 +1,12 @@
 
 #pragma once
+#include "token.h"
+#include "tokentype.h"
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <sstream>
-#include "token.h"
-#include "tokentype.h"
 
 namespace Lexeme {
 class Scanner;
@@ -34,11 +34,12 @@ public:
     }
   }
 
-
-  static void error(int line, std::string message) { report(line, "", message); }
+  static void error(int line, std::string message) {
+    report(line, "", message);
+  }
 
   static void error(Token token, std::string msg) {
-    if (token.type == TokenType::_EOF) 
+    if (token.type == TokenType::_EOF)
       report(token.line, " at end", msg);
     else
       report(token.line, " at '" + std::string{token.lexeme} + "'", msg);
