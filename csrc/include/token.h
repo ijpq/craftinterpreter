@@ -10,12 +10,13 @@ class Token;
 using Literal = std::variant<double, std::string_view, std::monostate>;
 
 std::ostream &operator<<(std::ostream &os, const Token &token);
+std::string double_to_string(double value);
 std::string literal_to_str(Literal literal);
 
 struct Token {
   TokenType type;
-  std::string_view lexeme;
-  Literal literal;
+  std::string_view lexeme; // include quotes
+  Literal literal; // drop quotes
   int line;
   std::string output_str;
 

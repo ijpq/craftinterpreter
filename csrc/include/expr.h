@@ -24,7 +24,7 @@ struct ASTPrinter : Visitor {
   std::string visitLiteralExpr(Literal *expr);
   std::string visitUnaryExpr(Unary *expr);
   std::string prefix_expr(std::string name,
-                          std::initializer_list<Expr *> exprs);
+                          std::initializer_list<Expr*> exprs);
  std::string print(Expr* expr);
 };
 struct Expr {
@@ -54,8 +54,9 @@ struct Grouping : Expr {
 };
 
 struct Literal : Expr {
-  Lexeme::Literal literal;
-  Literal(Lexeme::Literal literal) : literal(literal) {}
+  using LiteralValue = std::variant<double, std::string, bool, std::monostate >;
+  LiteralValue literal;
+  Literal(LiteralValue literal) : literal(literal) {}
   Visitor::ReturnType accept(Visitor *visitor) override {
     return visitor->visitLiteralExpr(this);
   }
