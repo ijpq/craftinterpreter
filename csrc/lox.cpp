@@ -1,4 +1,5 @@
 #include "include/scanner.h"
+#include "include/parser.h"
 
 namespace Lexeme {
 
@@ -6,9 +7,15 @@ void Lox::run(const std::string &contents) {
   scanner = std::make_unique<Scanner>(contents);
   tokens = scanner->scanTokens();
 
-  for (auto token : tokens) {
-    std::cout << token << std::endl;
-  }
+  Parser parser = Parser(tokens);
+  std::unique_ptr<Expr> expression = parser.parse();
+  if (hadError) return ;
+
+  std::cout << ASTPrinter().print(expression.get()) << std::endl;
+  // NOTE: comment this code to enable parser work
+  // for (auto token : tokens) {
+  //   std::cout << token << std::endl;
+  // }
 }
 
 void Lox::runPrompt() {

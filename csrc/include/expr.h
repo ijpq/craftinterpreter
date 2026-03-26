@@ -19,6 +19,7 @@ public:
 };
 
 struct ASTPrinter : Visitor {
+  // using raw ptr since we only take a look at this classes.
   std::string visitBinaryExpr(Binary *expr);
   std::string visitGroupingExpr(Grouping *expr);
   std::string visitLiteralExpr(Literal *expr);

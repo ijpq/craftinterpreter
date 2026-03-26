@@ -1,4 +1,5 @@
 #include "expr.h"
+#include "lox.h"
 #include "token.h"
 #include "tokentype.h"
 #include <exception>
@@ -12,12 +13,21 @@ using Lexeme::Token;
 using Lexeme::TokenType;
 using syntax::Binary;
 using syntax::Expr;
+namespace syntax {
+struct ParserError : std::exception {
+  ParserError(Token token, std::string error) {
+    Lox::error(token, error);
+  }
+};
 struct Parser {
   int current = 0;
   std::vector<Token> tokens;
 
   Parser(std::vector<Token> tokens) : tokens(tokens) {}
 
+  bool isAtEnd() {
+    return peek().type == TokenType::_EOF;
+  }
   inline void advance() { current++; }
   bool match(std::initializer_list<TokenType> types) {
     for (auto type : types) {
@@ -28,7 +38,7 @@ struct Parser {
     }
     return false;
   }
-
+  Token &peek() {return tokens[current];}
   Token &previous() { return tokens[current - 1]; }
 
   std::unique_ptr<Expr> expression() { return std::move(equality()); }
@@ -113,22 +123,53 @@ struct Parser {
       case (TokenType::NIL):
         return std::move(std::make_unique<syntax::Literal>(std::monostate{}));
       default:
-        throw std::exception();
+        throw ParserError(tokens[current], "unexpected token");
       }
     } else if (match({TokenType::LEFT_PAREN})) {
       auto expr = expression();
       consume(TokenType::RIGHT_PAREN, "expect right parenthesis after group");
       auto group = std::make_unique<Grouping>(std::move(expr));
       return std::move(group);
+    } else {
+      throw ParserError(peek(), "expect expression");
     }
   }
 
   void consume(TokenType expected, std::string err_msg) {
     advance();
-    if (expected == tokens[current].type) {advance(); return;}
-    throw std::exception();
-
+    if (expected == tokens[current].type) {
+      advance();
+      return;
+    }
+    throw ParserError(tokens[current], "unfinished token");
   }
 
+  void synchronize() {
+    advance();
+    while (!isAtEnd()) {
+      if (previous().type == TokenType::SEMICOLON) return ;
+      switch(peek().type) {
+      case TokenType::CLASS:
+      case TokenType::FUN:
+      case TokenType::VAR:
+      case TokenType::FOR:
+      case TokenType::IF:
+      case TokenType::WHILE:
+      case TokenType::PRINT:
+      case TokenType::RETURN:
+          return;
+      default:
+        advance();
+      }
+    }
+  }
 
+  std::unique_ptr<Expr> parse() {
+    try {
+      return std::move(expression());
+    } catch (ParserError& e) {
+      return nullptr;
+    }
+  }
 };
+} // namespace syntax
