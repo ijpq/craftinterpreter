@@ -107,17 +107,19 @@ struct Parser {
       Token op = previous();
       switch (op.type) {
       case (TokenType::NUMBER):
-        return std::move(
-            std::make_unique<syntax::Literal>(std::get<double>(op.literal)));
+        return std::move(std::make_unique<syntax::Literal>(
+            syntax::Literal::LiteralValue(std::get<double>(op.literal))));
       case (TokenType::STRING):
         return std::move(
-            std::make_unique<syntax::Literal>(std::string{op.lexeme}));
+            std::make_unique<syntax::Literal>(std::get<1>(op.literal)));
+
       case (TokenType::TRUE):
         return std::move(std::make_unique<syntax::Literal>(true));
       case (TokenType::FALSE):
         return std::move(std::make_unique<syntax::Literal>(false));
       case (TokenType::NIL):
-        return std::move(std::make_unique<syntax::Literal>(std::monostate{}));
+        return std::move(std::make_unique<syntax::Literal>(
+            syntax::Literal::LiteralValue(std::monostate{})));
       default:
         throw ParserError(tokens[current], "unexpected token");
       }
@@ -127,12 +129,11 @@ struct Parser {
       auto group = std::make_unique<Grouping>(std::move(expr));
       return std::move(group);
     } else {
-      throw ParserError(peek(), "expect expression");
+      throw ParserError(peek(), " Expect expression.");
     }
   }
 
   void consume(TokenType expected, std::string err_msg) {
-    advance();
     if (expected == tokens[current].type) {
       advance();
       return;

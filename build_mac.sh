@@ -7,6 +7,10 @@ rm -rf build
 mkdir build
 cd build
 
+# 设置使用GCC（修改版本号为你安装的版本）
+export CC=/usr/local/bin/gcc-15
+export CXX=/usr/local/bin/g++-15
+
 # 配置 CMake
 cmake ..
 
@@ -14,3 +18,4 @@ cmake ..
 cmake --build .
 
 echo "编译完成! 可执行文件位于: build/craftinginterpreter"
+echo "编译器: $(${CXX} --version | head -1)"

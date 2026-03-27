@@ -6,42 +6,83 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# 收集源文件
-set(SOURCES
-    csrc/lox.cpp
-    csrc/scanner.cpp
+# 全局 include 目录
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/csrc/include)
+
+# ========================================
+# 核心库：Scanner 和 Token
+# ========================================
+add_library(lox_core
     csrc/token.cpp
+    csrc/scanner.cpp
 )
 
-# 创建主可执行文件
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-
-# 设置 include 目录
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/csrc/include
+# ========================================
+# AST 库：Expr 和 Visitor（不含main函数）
+# ========================================
+add_library(expr_lib
+    csrc/expr.cpp
 )
-add_library(token_lib csrc/token.cpp)
-add_executable(test_ast_printer csrc/expr.cpp)
-target_link_libraries(test_ast_printer token_lib)
-# 编译选项
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+target_link_libraries(expr_lib lox_core)
 
-# 测试可执行文件
+# ========================================
+# 主程序：craftinginterpreter
+# ========================================
+add_executable(craftinginterpreter
+    csrc/lox.cpp
+)
+target_link_libraries(craftinginterpreter expr_lib lox_core)
+
+# ========================================
+# 测试程序
+# ========================================
+
+# Scanner 测试
 add_executable(scanner_test
     tests/scanner_test.cpp
-    csrc/scanner.cpp
-    csrc/token.cpp
 )
+target_link_libraries(scanner_test lox_core)
 
-target_include_directories(scanner_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/csrc/include
+# AST Printer 测试（独立的main函数）
+add_executable(test_ast_printer
+    csrc/expr_test_main.cpp
 )
+target_link_libraries(test_ast_printer expr_lib lox_core)
 
-if(NOT MSVC)
-    target_compile_options(scanner_test PRIVATE -Wall -Wextra -Wpedantic)
+# Parser 测试
+add_executable(parser_test
+    tests/parser_test.cpp
+)
+target_link_libraries(parser_test expr_lib lox_core)
+
+# ========================================
+# 编译选项
+# ========================================
+if(MSVC)
+    target_compile_options(lox_core PRIVATE /W4)
+else()
+    target_compile_options(lox_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# 为所有可执行文件设置相同的编译选项
+set(EXECUTABLES 
+    craftinginterpreter 
+    scanner_test 
+    test_ast_printer 
+    parser_test
+)
+
+foreach(executable ${EXECUTABLES})
+    if(MSVC)
+        target_compile_options(${executable} PRIVATE /W4)
+    else()
+        target_compile_options(${executable} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endforeach()
+
+# ========================================
+# 输出信息
+# ========================================
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")
+message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")

@@ -1,0 +1,4 @@
+// Test unary operators
+-5 * 3
+!true
+-(1 + 2)

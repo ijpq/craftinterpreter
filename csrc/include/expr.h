@@ -1,5 +1,8 @@
+#pragma once
 #include "token.h"
 #include <initializer_list>
+#include <memory>
+#include <variant>
 namespace syntax {
 class Binary;
 class Grouping;
@@ -61,6 +64,16 @@ struct Literal : Expr {
   using LiteralValue = std::variant<double, std::string, bool, std::monostate>;
   LiteralValue literal;
   Literal(LiteralValue literal) : literal(literal) {}
+  Literal(Lexeme::Literal lexemeliteral) {
+    std::visit([&](auto&& args) {
+      using T = std::decay_t<decltype(args)>;
+      if constexpr (std::is_same_v<T, double> || std::is_same_v<T, std::monostate>) {
+        literal = args;
+      } else {
+        literal = std::string(args);
+      }
+    }, lexemeliteral);
+  }
   Visitor::ReturnType accept(Visitor *visitor) override {
     return visitor->visitLiteralExpr(this);
   }

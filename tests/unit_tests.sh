@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 统一单元测试脚本 - Scanner + ASTPrinter
+# 统一单元测试脚本 - Scanner + ASTPrinter + Parser
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -64,27 +64,62 @@ test_ast_printer() {
     fi
 }
 
+# Parser 测试: 测试 C++ parser 能否正确解析表达式
+test_parser() {
+    local test_name="$1"
+    local test_file="$2"
+    
+    echo -e "  ${BLUE}[Parser] ${test_name}${NC}"
+    
+    cd "$PROJECT_ROOT"
+    parser_output=$("$PROJECT_ROOT/build/parser_test" "$test_file" 2>&1)
+    parser_rc=$?
+    
+    if [ $parser_rc -eq 0 ]; then
+        echo -e "  ${GREEN}✓ PASS${NC}"
+        local ast_line=$(echo "$parser_output" | grep -A 1 "=== AST ===" | tail -1)
+        echo "    AST: $ast_line"
+        ((TESTS_PASSED++))
+    else
+        echo -e "  ${RED}✗ FAIL${NC}"
+        echo "$parser_output" | sed 's/^/    /'
+        ((TESTS_FAILED++))
+    fi
+}
+
 # ========================================
-# 编译
+# 清理和编译
 # ========================================
 
-echo -e "${YELLOW}编译程序...${NC}"
-cd "$PROJECT_ROOT"
+echo -e "${YELLOW}========================================"
+echo "清理和编译"
+echo "========================================${NC}"
 
-# 编译 C++ (cmake)
-cd build && cmake --build . > /dev/null 2>&1
-cmake_rc=$?
+# 清理和编译 C++
+echo -e "${BLUE}清理C++旧编译文件...${NC}"
+rm -rf "$PROJECT_ROOT/build"
+
+echo -e "${BLUE}编译C++代码...${NC}"
 cd "$PROJECT_ROOT"
-if [ $cmake_rc -ne 0 ]; then
-    echo -e "${RED}C++ cmake 编译失败, 尝试重新配置...${NC}"
-    ./build_mac.sh > /dev/null 2>&1
+if ! ./build_mac.sh; then
+    echo -e "${RED}C++编译失败${NC}"
+    exit 1
 fi
 
-# 编译 Java
-cd "$PROJECT_ROOT/lox" && javac *.java 2>/dev/null
+# 清理和编译 Java
+echo -e "\n${BLUE}清理Java旧编译文件...${NC}"
+rm -f "$PROJECT_ROOT/lox"/*.class
+
+echo -e "${BLUE}编译Java代码...${NC}"
+cd "$PROJECT_ROOT/lox"
+if ! javac *.java; then
+    echo -e "${RED}Java编译失败${NC}"
+    cd "$PROJECT_ROOT"
+    exit 1
+fi
 cd "$PROJECT_ROOT"
 
-echo -e "${GREEN}编译完成${NC}"
+echo -e "\n${GREEN}编译完成${NC}"
 
 # ========================================
 # ASTPrinter 测试
@@ -140,6 +175,21 @@ test_scanner "注释" "// comment
 var x = 1;"
 test_scanner "多行" "var a = 1;
 var b = 2;"
+
+# ========================================
+# Parser 测试
+# ========================================
+
+echo -e "\n${YELLOW}========================================"
+echo "Parser 测试"
+echo "========================================${NC}"
+
+# 测试各种表达式解析
+test_parser "算术表达式" "$PROJECT_ROOT/tests/test_arithmetic.lox"
+test_parser "比较和相等" "$PROJECT_ROOT/tests/test_comparison.lox"
+test_parser "一元运算符" "$PROJECT_ROOT/tests/test_unary.lox"
+test_parser "分组括号" "$PROJECT_ROOT/tests/test_grouping.lox"
+test_parser "字面量" "$PROJECT_ROOT/tests/test_literals.lox"
 
 # ========================================
 # 总结

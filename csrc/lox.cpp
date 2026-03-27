@@ -1,5 +1,6 @@
 #include "include/parser.h"
 #include "include/scanner.h"
+#include "include/lox.h"
 
 namespace Lexeme {
 
