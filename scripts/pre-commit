@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Git pre-commit hook: 自动格式化C++和Java文件
+
+echo "运行代码格式化..."
+
+# 获取所有staged的文件
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# 标记是否有文件被格式化
+FORMATTED=0
+
+# 处理C++文件（.cpp, .h, .hpp）
+CPP_FILES=$(echo "$STAGED_FILES" | grep -E '\.(cpp|h|hpp)$' || true)
+if [ -n "$CPP_FILES" ]; then
+    echo "格式化C++文件..."
+    for file in $CPP_FILES; do
+        if [ -f "$file" ]; then
+            echo "  - $file"
+            clang-format -i "$file"
+            git add "$file"
+            FORMATTED=1
+        fi
+    done
+fi
+
+# 处理Java文件（.java）
+JAVA_FILES=$(echo "$STAGED_FILES" | grep -E '\.java$' || true)
+if [ -n "$JAVA_FILES" ]; then
+    echo "格式化Java文件..."
+    for file in $JAVA_FILES; do
+        if [ -f "$file" ]; then
+            echo "  - $file"
+            google-java-format --replace "$file"
+            git add "$file"
+            FORMATTED=1
+        fi
+    done
+fi
+
+if [ $FORMATTED -eq 1 ]; then
+    echo "代码格式化完成"
+else
+    echo "没有需要格式化的文件"
+fi
+
+exit 0
