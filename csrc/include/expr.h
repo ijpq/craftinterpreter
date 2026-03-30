@@ -1,8 +1,10 @@
 #pragma once
-#include "token.h"
 #include <initializer_list>
 #include <memory>
 #include <variant>
+
+#include "helper/object.h"
+#include "token.h"
 namespace syntax {
 class Binary;
 class Grouping;
@@ -12,40 +14,40 @@ using Lexeme::Token;
 class Expr;
 
 struct Visitor {
+  using ReturnType =
+      interpreter::Object<double, std::string, bool, std::monostate>;
 
-  using ReturnType = std::string;
-
-public:
-  virtual ReturnType visitBinaryExpr(Binary *expr) = 0;
-  virtual ReturnType visitGroupingExpr(Grouping *expr) = 0;
-  virtual ReturnType visitLiteralExpr(Literal *expr) = 0;
-  virtual ReturnType visitUnaryExpr(Unary *expr) = 0;
+ public:
+  virtual ReturnType visitBinaryExpr(Binary* expr) = 0;
+  virtual ReturnType visitGroupingExpr(Grouping* expr) = 0;
+  virtual ReturnType visitLiteralExpr(Literal* expr) = 0;
+  virtual ReturnType visitUnaryExpr(Unary* expr) = 0;
 };
 
 struct ASTPrinter : Visitor {
   // using raw ptr since we only take a look at this classes.
-  std::string visitBinaryExpr(Binary *expr);
-  std::string visitGroupingExpr(Grouping *expr);
-  std::string visitLiteralExpr(Literal *expr);
-  std::string visitUnaryExpr(Unary *expr);
-  std::string prefix_expr(std::string name,
-                          std::initializer_list<Expr *> exprs);
-  std::string print(Expr *expr);
+  ReturnType visitBinaryExpr(Binary* expr);
+  ReturnType visitGroupingExpr(Grouping* expr);
+  ReturnType visitLiteralExpr(Literal* expr);
+  ReturnType visitUnaryExpr(Unary* expr);
+  ReturnType prefix_expr(std::string name, std::initializer_list<Expr*> exprs);
+  std::string print(Expr* expr);
 };
-struct Expr {
 
-  virtual std::string accept(Visitor *visitor) = 0;
+struct Expr {
+  using ReturnType =
+      interpreter::Object<double, std::string, bool, std::monostate>;
+  virtual ReturnType accept(Visitor* visitor) = 0;
 };
 
 struct Binary : Expr {
-
   std::unique_ptr<Expr> left;
   Token op;
   std::unique_ptr<Expr> right;
   Binary(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right)
       : left(std::move(left)), op(op), right(std::move(right)) {}
 
-  std::string accept(Visitor *visitor) override {
+  ReturnType accept(Visitor* visitor) override {
     return visitor->visitBinaryExpr(this);
   }
 };
@@ -55,7 +57,7 @@ struct Grouping : Expr {
 
   Grouping(std::unique_ptr<Expr> expression)
       : expression(std::move(expression)) {}
-  Visitor::ReturnType accept(Visitor *visitor) override {
+  Visitor::ReturnType accept(Visitor* visitor) override {
     return visitor->visitGroupingExpr(this);
   }
 };
@@ -65,16 +67,19 @@ struct Literal : Expr {
   LiteralValue literal;
   Literal(LiteralValue literal) : literal(literal) {}
   Literal(Lexeme::Literal lexemeliteral) {
-    std::visit([&](auto&& args) {
-      using T = std::decay_t<decltype(args)>;
-      if constexpr (std::is_same_v<T, double> || std::is_same_v<T, std::monostate>) {
-        literal = args;
-      } else {
-        literal = std::string(args);
-      }
-    }, lexemeliteral);
+    std::visit(
+        [&](auto&& args) {
+          using T = std::decay_t<decltype(args)>;
+          if constexpr (std::is_same_v<T, double> ||
+                        std::is_same_v<T, std::monostate>) {
+            literal = args;
+          } else {
+            literal = std::string(args);
+          }
+        },
+        lexemeliteral);
   }
-  Visitor::ReturnType accept(Visitor *visitor) override {
+  Visitor::ReturnType accept(Visitor* visitor) override {
     return visitor->visitLiteralExpr(this);
   }
 };
@@ -82,10 +87,10 @@ struct Literal : Expr {
 struct Unary : Expr {
   Unary(Token op, std::unique_ptr<Expr> right)
       : op(op), right(std::move(right)) {}
-  Visitor::ReturnType accept(Visitor *visitor) override {
+  Visitor::ReturnType accept(Visitor* visitor) override {
     return visitor->visitUnaryExpr(this);
   }
   Token op;
   std::unique_ptr<Expr> right;
 };
-} // namespace syntax
+}  // namespace syntax
