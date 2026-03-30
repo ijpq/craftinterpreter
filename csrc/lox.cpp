@@ -1,19 +1,23 @@
-#include "include/parser.h"
-#include "include/scanner.h"
 #include "include/lox.h"
 
-namespace Lexeme {
+#include "include/parser.h"
+#include "include/scanner.h"
 
-void Lox::run(const std::string &contents) {
+namespace Lexeme {
+bool Lox::hadError = false;
+bool Lox::hadRuntimeError = false;
+void Lox::run(const std::string& contents) {
   scanner = std::make_unique<Scanner>(contents);
   tokens = scanner->scanTokens();
 
   Parser parser = Parser(tokens);
   std::unique_ptr<Expr> expression = parser.parse();
-  if (hadError)
-    return;
+  if (hadError) return;
 
-  std::cout << ASTPrinter().print(expression.get()) << std::endl;
+  interpreter_.interpret(expression.get());
+  // NOTE: we comment this since enable interpreter start work.
+  // std::cout << ASTPrinter().print(expression.get()) << std::endl;
+
   // NOTE: comment this code to enable parser work
   // for (auto token : tokens) {
   //   std::cout << token << std::endl;
@@ -34,9 +38,9 @@ void Lox::runPrompt() {
     hadError = false;
   }
 }
-} // namespace Lexeme
+}  // namespace Lexeme
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   using namespace Lexeme;
   Lox lox;
 
@@ -44,9 +48,9 @@ int main(int argc, char *argv[]) {
     std::cerr << "Usage: craftinginterpreter [script]" << std::endl;
     std::exit(64);
   } else if (argc == 2) {
-    lox.runFile(argv[1]); // argv[1] 是脚本文件
+    lox.runFile(argv[1]);  // argv[1] 是脚本文件
   } else {
-    lox.runPrompt(); // argc == 1,进入交互模式
+    lox.runPrompt();  // argc == 1,进入交互模式
   }
 
   return 0;
