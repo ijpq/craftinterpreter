@@ -55,6 +55,10 @@ add_executable(parser_test
 )
 target_link_libraries(parser_test expr_lib lox_core)
 
+add_executable(object_test
+    tests/test_object.cpp)
+
+
 # ========================================
 # 编译选项
 # ========================================
