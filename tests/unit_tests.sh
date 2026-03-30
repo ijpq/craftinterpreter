@@ -192,6 +192,31 @@ test_parser "分组括号" "$PROJECT_ROOT/tests/test_grouping.lox"
 test_parser "字面量" "$PROJECT_ROOT/tests/test_literals.lox"
 
 # ========================================
+# Chapter 7 Interpreter 测试
+# ========================================
+
+echo -e "\n${YELLOW}========================================"
+echo "Chapter 7 Interpreter 测试"
+echo "========================================${NC}"
+
+# 编译并运行 InterpreterTest
+cd "$PROJECT_ROOT/lox"
+if javac InterpreterTest.java 2>/dev/null; then
+    interp_output=$(java -cp "$PROJECT_ROOT" lox.InterpreterTest 2>&1)
+    interp_rc=$?
+    echo "$interp_output"
+    if [ $interp_rc -eq 0 ]; then
+        ((TESTS_PASSED++))
+    else
+        ((TESTS_FAILED++))
+    fi
+else
+    echo -e "  ${RED}✗ InterpreterTest 编译失败${NC}"
+    ((TESTS_FAILED++))
+fi
+cd "$PROJECT_ROOT"
+
+# ========================================
 # 总结
 # ========================================
 
