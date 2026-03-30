@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <exception>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -30,6 +31,30 @@ struct Object {
  public:
   // Object(Ts&&... ts) { TypeList = std::make_tuple(std::forward<Ts>(ts)...); }
 
+  template <size_t... I>
+  bool isEqual(std::index_sequence<I...> _, Object& rhs) {
+    // using T = std::tuple_element_t<I, std::tuple<Ts...>>;
+    return (
+        (index_ == I && hold_alternative<
+                            std::tuple_element_t<I, std::tuple<Ts...>>>() ==
+                            rhs.hold_alternative<
+                                std::tuple_element_t<I, std::tuple<Ts...>>>()
+             ? (get<std::tuple_element_t<I, std::tuple<Ts...>>>() ==
+                    rhs.get<std::tuple_element_t<I, std::tuple<Ts...>>>() &&
+                true)
+             : false) ||
+        ...);
+  }
+  bool operator==(Object& rhs) {
+    return isEqual(std::index_sequence_for<Ts...>{}, rhs);
+  }
+  template <typename T>
+  bool hold_alternative() {
+    auto expected_index = TypeIndex<T, Ts...>::value;
+    if (expected_index == index_) return true;
+    return false;
+  }
+  constexpr auto index() const { return index_; }
   template <typename Alternative>
   Object(Alternative&& T_j) {
     update_value(std::forward<Alternative>(T_j));
@@ -81,11 +106,23 @@ struct Object {
   void destroy() noexcept { destroy_impl(std::index_sequence_for<Ts...>{}); }
 
   template <typename T>
-  T& get() {
+  constexpr T& get() {
     auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
     if (index != index_) throw std::exception();
     auto& ret = *reinterpret_cast<T*>(buf);
     return ret;
+  }
+
+  std::string to_string() {
+    return std::visit(
+        [](auto&& args) -> std::string {
+          std::string class_name = typeid(args).name();
+
+          char address[20];
+          std::sprintf(address, "%p", (void*)&args);
+          return class_name + "@" + address;
+        },
+        *this);
   }
 };
 
