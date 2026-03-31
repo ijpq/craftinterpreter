@@ -45,9 +45,11 @@ struct Object {
              : false) ||
         ...);
   }
+
   bool operator==(Object& rhs) {
     return isEqual(std::index_sequence_for<Ts...>{}, rhs);
   }
+
   template <typename T>
   bool hold_alternative() {
     auto expected_index = TypeIndex<T, Ts...>::value;
@@ -55,7 +57,19 @@ struct Object {
     return false;
   }
   constexpr auto index() const { return index_; }
-  template <typename Alternative>
+
+  template <typename T>
+  struct F_one {
+    int operator()(T _);
+  };
+
+  template <typename... T>
+  struct F : F_one<T>... {
+    using F_one<T>::operator()...;
+  };
+
+  template <typename Alternative,
+            typename Ti = decltype(F<Ts...>{}(std::declval<Alternative>()))>
   Object(Alternative&& T_j) {
     update_value(std::forward<Alternative>(T_j));
   }
@@ -66,9 +80,11 @@ struct Object {
     ((I == rhs.index() ? (update_value(std::get<I>(rhs)), true) : false) ||
      ...);
   }
+
   Object(std::variant<Ts...>& rhs) {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
   }
+
   Object& operator=(std::variant<Ts...>& rhs) {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
     return *this;
@@ -80,6 +96,7 @@ struct Object {
     construct(std::forward<T>(val));
     // using Type = T;
   }
+
   template <typename T>
   void construct(T&& val) {
     using T_ = std::decay_t<T>;
@@ -90,6 +107,7 @@ struct Object {
   struct type_tag {
     using type = T;
   };
+
   template <size_t... I>
   void destroy_impl(std::integer_sequence<size_t, I...> _) {
     ((index_ == I
@@ -111,18 +129,6 @@ struct Object {
     if (index != index_) throw std::exception();
     auto& ret = *reinterpret_cast<T*>(buf);
     return ret;
-  }
-
-  std::string to_string() {
-    return std::visit(
-        [](auto&& args) -> std::string {
-          std::string class_name = typeid(args).name();
-
-          char address[20];
-          std::sprintf(address, "%p", (void*)&args);
-          return class_name + "@" + address;
-        },
-        *this);
   }
 };
 
