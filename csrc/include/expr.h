@@ -35,8 +35,7 @@ struct ASTPrinter : Visitor {
 };
 
 struct Expr {
-  using ReturnType =
-      interpreter::Object<double, std::string, bool, std::monostate>;
+  using ReturnType = Visitor::ReturnType;
   virtual ReturnType accept(Visitor* visitor) = 0;
 };
 
@@ -57,7 +56,7 @@ struct Grouping : Expr {
 
   Grouping(std::unique_ptr<Expr> expression)
       : expression(std::move(expression)) {}
-  Visitor::ReturnType accept(Visitor* visitor) override {
+  ReturnType accept(Visitor* visitor) override {
     return visitor->visitGroupingExpr(this);
   }
 };
@@ -79,7 +78,7 @@ struct Literal : Expr {
         },
         lexemeliteral);
   }
-  Visitor::ReturnType accept(Visitor* visitor) override {
+  ReturnType accept(Visitor* visitor) override {
     return visitor->visitLiteralExpr(this);
   }
 };
@@ -87,10 +86,13 @@ struct Literal : Expr {
 struct Unary : Expr {
   Unary(Token op, std::unique_ptr<Expr> right)
       : op(op), right(std::move(right)) {}
-  Visitor::ReturnType accept(Visitor* visitor) override {
+  ReturnType accept(Visitor* visitor) override {
     return visitor->visitUnaryExpr(this);
   }
   Token op;
   std::unique_ptr<Expr> right;
 };
+
+std::string stringify(Visitor::ReturnType obj);
+
 }  // namespace syntax

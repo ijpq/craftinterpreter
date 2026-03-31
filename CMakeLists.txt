@@ -6,13 +6,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Shared library rpath 设置（macOS 开发阶段）
+set(CMAKE_MACOSX_RPATH ON)
+set(BUILD_SHARED_LIBS ON)
+set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
+
 # 全局 include 目录
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/csrc/include)
 
 # ========================================
 # 核心库：Scanner 和 Token
 # ========================================
-add_library(lox_core
+add_library(lox_core SHARED
     csrc/token.cpp
     csrc/scanner.cpp
 )
@@ -20,7 +25,10 @@ add_library(lox_core
 # ========================================
 # AST 库：Expr 和 Visitor（不含main函数）
 # ========================================
-add_library(expr_lib
+add_library(interpreter_lib SHARED csrc/interpreter.cpp)
+target_link_libraries(interpreter_lib lox_core expr_lib)
+
+add_library(expr_lib SHARED
     csrc/expr.cpp
 )
 target_link_libraries(expr_lib lox_core)
@@ -31,7 +39,7 @@ target_link_libraries(expr_lib lox_core)
 add_executable(craftinginterpreter
     csrc/lox.cpp
 )
-target_link_libraries(craftinginterpreter expr_lib lox_core)
+target_link_libraries(craftinginterpreter expr_lib lox_core interpreter_lib)
 
 # ========================================
 # 测试程序

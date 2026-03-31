@@ -1,33 +1,50 @@
 #include "include/expr.h"
-#include "include/token.h"
-#include "include/tokentype.h"
+
+#include <cmath>
+#include <cstdio>
 #include <variant>
+
+#include "include/token.h"
 
 namespace syntax {
 
-std::string ASTPrinter::prefix_expr(std::string name,
-                                    std::initializer_list<Expr *> exprs) {
+std::string stringify(Visitor::ReturnType obj) {
+  if (obj.hold_alternative<std::monostate>()) return "nil";
+  if (obj.hold_alternative<bool>()) return obj.get<bool>() ? "true" : "false";
+  if (obj.hold_alternative<std::string>()) return obj.get<std::string>();
+  if (obj.hold_alternative<double>()) {
+    double d = obj.get<double>();
+    if (std::floor(d) == d && std::isfinite(d))
+      return std::to_string((long long)d);
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%.14g", d);
+    return buf;
+  }
+  return "";
+}
+
+Visitor::ReturnType ASTPrinter::prefix_expr(
+    std::string name, std::initializer_list<Expr*> exprs) {
   std::string res;
   res += "(" + name;
-  for (auto &&expr : exprs)
-    res += " " + expr->accept(this);
+  for (auto&& expr : exprs) res += " " + stringify(expr->accept(this));
 
   res += ")";
   return res;
 }
 
-Visitor::ReturnType ASTPrinter::visitBinaryExpr(Binary *expr) {
+Visitor::ReturnType ASTPrinter::visitBinaryExpr(Binary* expr) {
   return prefix_expr(std::string{expr->op.lexeme},
                      {expr->left.get(), expr->right.get()});
 }
 
-Visitor::ReturnType ASTPrinter::visitGroupingExpr(Grouping *expr) {
+Visitor::ReturnType ASTPrinter::visitGroupingExpr(Grouping* expr) {
   return prefix_expr("group", {expr->expression.get()});
 }
 
-std::string literalval_to_str(Literal *literal) {
+std::string literalval_to_str(Literal* literal) {
   return std::visit(
-      [](auto &&args) -> std::string {
+      [](auto&& args) -> std::string {
         using T = std::decay_t<decltype(args)>;
         if constexpr (std::is_same_v<T, bool>) {
           return args ? "true" : "false";
@@ -42,14 +59,16 @@ std::string literalval_to_str(Literal *literal) {
       literal->literal);
 }
 
-Visitor::ReturnType ASTPrinter::visitLiteralExpr(Literal *expr) {
+Visitor::ReturnType ASTPrinter::visitLiteralExpr(Literal* expr) {
   return literalval_to_str(expr);
 }
 
-Visitor::ReturnType ASTPrinter::visitUnaryExpr(Unary *expr) {
+Visitor::ReturnType ASTPrinter::visitUnaryExpr(Unary* expr) {
   return prefix_expr(std::string{expr->op.lexeme}, {expr->right.get()});
 }
 
-std::string ASTPrinter::print(Expr *expr) { return expr->accept(this); }
+std::string ASTPrinter::print(Expr* expr) {
+  return stringify(expr->accept(this));
+}
 
-} // namespace syntax
+}  // namespace syntax

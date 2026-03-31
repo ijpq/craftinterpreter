@@ -1,4 +1,6 @@
 #pragma once
+#include <cmath>
+#include <cstdio>
 #include <exception>
 #include <stdexcept>
 #include <string>
@@ -11,23 +13,14 @@
 #include "tokentype.h"
 namespace interpreter {
 
+using LoxValueType = syntax::Visitor::ReturnType;
+
 struct Interpreter : syntax::Visitor {
   /*
   interpreter class act as visitor to AST, and compute each tree's value
   */
-  using LoxValueType = syntax::Visitor::ReturnType;
   void interpret(syntax::Expr* expr);
-  std::string stringify(LoxValueType object) {
-    if (object.hold_alternative<std::monostate>()) return "null";
-    if (object.hold_alternative<double>()) {
-      std::string text = object.to_string();
-      if (text.substr(text.size() - 2, 2) == ".0") {
-        text = text.substr(0, text.size() - 2);
-      }
-      return text;
-    }
-    return object.to_string();
-  }
+
   LoxValueType visitLiteralExpr(syntax::Literal* expr) override {
     return LoxValueType(expr->literal);
   }
@@ -73,10 +66,10 @@ struct Interpreter : syntax::Visitor {
         return left.get<double>() - right.get<double>();
       case Lexeme::TokenType::SLASH:
         checkNumberOperand(expr->op, left, right);
-        return left.get<double>() - right.get<double>();
+        return left.get<double>() / right.get<double>();
       case Lexeme::TokenType::STAR:
         checkNumberOperand(expr->op, left, right);
-        return left.get<double>() - right.get<double>();
+        return left.get<double>() * right.get<double>();
       case Lexeme::TokenType::PLUS:
         if (left.hold_alternative<double>() &&
             right.hold_alternative<double>()) {

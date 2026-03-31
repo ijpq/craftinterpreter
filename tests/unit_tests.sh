@@ -34,13 +34,15 @@ test_scanner() {
     
     rm -f "$test_file"
     
+    echo "    --- Java ---"
+    echo "$java_output" | sed 's/^/      /'
+    echo "    --- C++ ---"
+    echo "$cpp_output" | sed 's/^/      /'
     if [ "$java_output" = "$cpp_output" ]; then
         echo -e "  ${GREEN}✓ PASS${NC}"
         ((TESTS_PASSED++))
     else
         echo -e "  ${RED}✗ FAIL${NC}"
-        echo "    Java: $java_output"
-        echo "    C++:  $cpp_output"
         ((TESTS_FAILED++))
     fi
 }
@@ -64,25 +66,25 @@ test_ast_printer() {
     fi
 }
 
-# Parser 测试: 测试 C++ parser 能否正确解析表达式
+# Parser 测试: 打印 C++ parser_test 输出
 test_parser() {
     local test_name="$1"
     local test_file="$2"
-    
+
     echo -e "  ${BLUE}[Parser] ${test_name}${NC}"
-    
+
     cd "$PROJECT_ROOT"
-    parser_output=$("$PROJECT_ROOT/build/parser_test" "$test_file" 2>&1)
-    parser_rc=$?
-    
-    if [ $parser_rc -eq 0 ]; then
+    cpp_output=$("$PROJECT_ROOT/build/parser_test" "$test_file" 2>&1)
+    cpp_rc=$?
+
+    echo "    --- C++ ---"
+    echo "$cpp_output" | sed 's/^/      /'
+
+    if [ $cpp_rc -eq 0 ]; then
         echo -e "  ${GREEN}✓ PASS${NC}"
-        local ast_line=$(echo "$parser_output" | grep -A 1 "=== AST ===" | tail -1)
-        echo "    AST: $ast_line"
         ((TESTS_PASSED++))
     else
         echo -e "  ${RED}✗ FAIL${NC}"
-        echo "$parser_output" | sed 's/^/    /'
         ((TESTS_FAILED++))
     fi
 }
@@ -192,29 +194,42 @@ test_parser "分组括号" "$PROJECT_ROOT/tests/test_grouping.lox"
 test_parser "字面量" "$PROJECT_ROOT/tests/test_literals.lox"
 
 # ========================================
-# Chapter 7 Interpreter 测试
+# Chapter 7 Interpreter 正确性测试（Java vs C++ 输出比较）
 # ========================================
 
 echo -e "\n${YELLOW}========================================"
-echo "Chapter 7 Interpreter 测试"
+echo "Chapter 7 Interpreter 正确性测试"
 echo "========================================${NC}"
 
-# 编译并运行 InterpreterTest
-cd "$PROJECT_ROOT/lox"
-if javac InterpreterTest.java 2>/dev/null; then
-    interp_output=$(java -cp "$PROJECT_ROOT" lox.InterpreterTest 2>&1)
-    interp_rc=$?
-    echo "$interp_output"
-    if [ $interp_rc -eq 0 ]; then
+test_interpreter() {
+    local test_name="$1"
+    local test_file="$2"
+
+    echo -e "  ${BLUE}[Interpreter] ${test_name}${NC}"
+
+    cd "$PROJECT_ROOT"
+    java_output=$(java -cp "$PROJECT_ROOT" lox.Lox "$test_file" 2>&1)
+    cpp_output=$(DYLD_LIBRARY_PATH="$PROJECT_ROOT/build" "$PROJECT_ROOT/build/craftinginterpreter" "$test_file" 2>&1)
+
+    echo "    --- Java ---"
+    echo "$java_output" | sed 's/^/      /'
+    echo "    --- C++ ---"
+    echo "$cpp_output" | sed 's/^/      /'
+    if [ "$java_output" = "$cpp_output" ]; then
+        echo -e "  ${GREEN}✓ PASS${NC}"
         ((TESTS_PASSED++))
     else
+        echo -e "  ${RED}✗ FAIL${NC}"
         ((TESTS_FAILED++))
     fi
-else
-    echo -e "  ${RED}✗ InterpreterTest 编译失败${NC}"
-    ((TESTS_FAILED++))
-fi
-cd "$PROJECT_ROOT"
+}
+
+test_interpreter "算术" "$PROJECT_ROOT/tests/ch7_arithmetic.lox"
+test_interpreter "字符串拼接" "$PROJECT_ROOT/tests/ch7_strings.lox"
+test_interpreter "比较运算" "$PROJECT_ROOT/tests/ch7_comparison.lox"
+test_interpreter "相等判断" "$PROJECT_ROOT/tests/ch7_equality.lox"
+test_interpreter "一元运算" "$PROJECT_ROOT/tests/ch7_unary.lox"
+test_interpreter "数字格式化" "$PROJECT_ROOT/tests/ch7_numbers.lox"
 
 # ========================================
 # 总结

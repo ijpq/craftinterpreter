@@ -6,6 +6,7 @@
 namespace Lexeme {
 bool Lox::hadError = false;
 bool Lox::hadRuntimeError = false;
+interpreter::Interpreter Lox::interpreter_;
 void Lox::run(const std::string& contents) {
   scanner = std::make_unique<Scanner>(contents);
   tokens = scanner->scanTokens();
@@ -14,7 +15,11 @@ void Lox::run(const std::string& contents) {
   std::unique_ptr<Expr> expression = parser.parse();
   if (hadError) return;
 
-  interpreter_.interpret(expression.get());
+  try {
+    interpreter_.interpret(expression.get());
+  } catch (interpreter::InterpreterRuntimeError& e) {
+    runtimeError(e);
+  }
   // NOTE: we comment this since enable interpreter start work.
   // std::cout << ASTPrinter().print(expression.get()) << std::endl;
 
