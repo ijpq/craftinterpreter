@@ -72,8 +72,10 @@ struct Literal : Expr {
           if constexpr (std::is_same_v<T, double> ||
                         std::is_same_v<T, std::monostate>) {
             literal = args;
-          } else {
+          } else if constexpr (std::is_same_v<T, std::string_view>) {
             literal = std::string(args);
+          } else {
+            literal.emplace<bool>(args);
           }
         },
         lexemeliteral);

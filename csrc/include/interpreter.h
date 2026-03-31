@@ -62,7 +62,7 @@ struct Interpreter : syntax::Visitor {
     LoxValueType right = evaluate(expr->right.get());
     switch (expr->op.type) {
       case Lexeme::TokenType::MINUS:
-        checkNumberOperand(expr->op, right);
+        checkNumberOperand(expr->op, left, right);
         return left.get<double>() - right.get<double>();
       case Lexeme::TokenType::SLASH:
         checkNumberOperand(expr->op, left, right);
@@ -103,8 +103,9 @@ struct Interpreter : syntax::Visitor {
   }
 
   bool isTruthy(LoxValueType object) {
-    if (object.get<std::monostate>() == std::monostate{}) return false;
-    return object.get<bool>();
+    if (object.hold_alternative<std::monostate>()) return false;
+    if (object.hold_alternative<bool>()) return object.get<bool>();
+    return true;
   }
 };
 
