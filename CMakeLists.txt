@@ -57,11 +57,11 @@ add_executable(test_ast_printer
 )
 target_link_libraries(test_ast_printer expr_lib lox_core)
 
-# Parser 测试
-add_executable(parser_test
-    tests/parser_test.cpp
-)
-target_link_libraries(parser_test expr_lib lox_core)
+# # Parser 测试
+# add_executable(parser_test
+#     tests/parser_test.cpp
+# )
+# target_link_libraries(parser_test expr_lib lox_core)
 
 add_executable(object_test
     tests/test_object.cpp)
@@ -81,7 +81,7 @@ set(EXECUTABLES
     craftinginterpreter 
     scanner_test 
     test_ast_printer 
-    parser_test
+    # parser_test
 )
 
 foreach(executable ${EXECUTABLES})

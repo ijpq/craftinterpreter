@@ -7,7 +7,16 @@
 #include <utility>
 #include <variant>
 namespace interpreter {
-
+// clang-format off
+/*
+Lox type Lox类   Java representation Java表示
+Any Lox value    Object
+nil              null
+Boolean          Boolean
+number           Double
+string           String
+*/
+// clang-format on
 // syntax: find T's index in Res
 template <typename T, typename... Res>
 struct TypeIndex;

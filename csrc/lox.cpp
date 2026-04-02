@@ -12,11 +12,15 @@ void Lox::run(const std::string& contents) {
   tokens = scanner->scanTokens();
 
   Parser parser = Parser(tokens);
-  std::unique_ptr<Expr> expression = parser.parse();
+  std::vector<std::unique_ptr<SST::Stmt>> statements =
+      parser.parse();  // statesment own this unique ptr.
+  // replace this starting from ch8
+  // std::unique_ptr<Expr> expression = parser.parse();
+
   if (hadError) return;
 
   try {
-    interpreter_.interpret(expression.get());
+    interpreter_.interpret(statements);
   } catch (interpreter::InterpreterRuntimeError& e) {
     runtimeError(e);
   }

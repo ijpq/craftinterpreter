@@ -2,24 +2,29 @@
 #include <cmath>
 #include <cstdio>
 #include <exception>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "expr.h"
 #include "helper/object.h"
 #include "runtimeerror.h"
+#include "stmt.h"
 #include "token.h"
 #include "tokentype.h"
 namespace interpreter {
 
 using LoxValueType = syntax::Visitor::ReturnType;
 
-struct Interpreter : syntax::Visitor {
+struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   /*
   interpreter class act as visitor to AST, and compute each tree's value
   */
   void interpret(syntax::Expr* expr);
+
+  void interpret(std::vector<std::unique_ptr<SST::Stmt>>& statements);
 
   LoxValueType visitLiteralExpr(syntax::Literal* expr) override {
     return LoxValueType(expr->literal);
@@ -30,6 +35,8 @@ struct Interpreter : syntax::Visitor {
   }
 
   LoxValueType evaluate(syntax::Expr* expr) { return expr->accept(this); }
+
+  void execute(SST::Stmt* stmt) { stmt->accept(this); }
 
   LoxValueType visitUnaryExpr(syntax::Unary* expr) override {
     auto right = evaluate(expr->right.get());
@@ -106,6 +113,16 @@ struct Interpreter : syntax::Visitor {
     if (object.hold_alternative<std::monostate>()) return false;
     if (object.hold_alternative<bool>()) return object.get<bool>();
     return true;
+  }
+
+  SST::StmtVisitorType visitExpressionStmt(SST::Expression* stmt) override {
+    evaluate(stmt->expression.get());
+    return;  // discard returned value
+  }
+
+  void visitPrintStmt(SST::Print* stmt) override {
+    LoxValueType value = evaluate(stmt->expression.get());
+    std::cout << syntax::stringify(value) << std::endl;
   }
 };
 

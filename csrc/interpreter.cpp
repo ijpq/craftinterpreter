@@ -9,6 +9,14 @@ void Interpreter::interpret(syntax::Expr* expr) {
   std::cout << stringify(v) << std::endl;
 }
 
+void Interpreter::interpret(
+    std::vector<std::unique_ptr<SST::Stmt>>& statements) {
+  // doesnt requre ownership
+  for (auto& statement : statements) execute(statement.get());
+  // LoxValueType v = evaluate(expr);
+  // std::cout << stringify(v) << std::endl;
+}
+
 // std::string stringify(LoxValueType object) {
 //   if (object.hold_alternative<std::monostate>()) return "nil";
 //   if (object.hold_alternative<bool>())

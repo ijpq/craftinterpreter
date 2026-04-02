@@ -22,6 +22,8 @@ struct Visitor {
   virtual ReturnType visitGroupingExpr(Grouping* expr) = 0;
   virtual ReturnType visitLiteralExpr(Literal* expr) = 0;
   virtual ReturnType visitUnaryExpr(Unary* expr) = 0;
+
+  ~Visitor() = default;
 };
 
 struct ASTPrinter : Visitor {
@@ -37,6 +39,7 @@ struct ASTPrinter : Visitor {
 struct Expr {
   using ReturnType = Visitor::ReturnType;
   virtual ReturnType accept(Visitor* visitor) = 0;
+  ~Expr() = default;
 };
 
 struct Binary : Expr {
