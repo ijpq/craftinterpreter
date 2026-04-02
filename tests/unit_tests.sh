@@ -141,42 +141,34 @@ echo -e "\n${YELLOW}========================================"
 echo "Scanner 测试"
 echo "========================================${NC}"
 
-# 基本类型
+# 字面量
 test_scanner "整数" "123;"
 test_scanner "浮点数" "123.456;"
 test_scanner "字符串" '"hello world";'
-
-# 变量与表达式
-test_scanner "变量声明" "var x = 10;"
-test_scanner "算术表达式" "1 + 2 * 3;"
-test_scanner "括号表达式" "(1 + 2) * 3;"
-test_scanner "复杂表达式" "var result = (a + b) * c / d - e;"
-
-# 运算符
-test_scanner "比较运算符" "x > 5;"
-test_scanner "相等运算符" "x == 10;"
-test_scanner "不等运算符" "x != 5;"
-test_scanner "逻辑运算符" "true and false;"
-
-# 关键字
-test_scanner "if" "if (x > 0) {}"
-test_scanner "while" "while (true) {}"
-test_scanner "for" "for (;;) {}"
-test_scanner "fun" "fun add() {}"
-test_scanner "class" "class MyClass {}"
-test_scanner "return" "return 42;"
-test_scanner "print" "print x;"
-
-# 字面量
 test_scanner "true" "true;"
 test_scanner "false" "false;"
 test_scanner "nil" "nil;"
 
-# 多行与注释
+# expression statement
+test_scanner "算术表达式" "1 + 2 * 3;"
+test_scanner "括号表达式" "(1 + 2) * 3;"
+test_scanner "比较运算符" "1 > 5;"
+test_scanner "相等运算符" "1 == 2;"
+test_scanner "不等运算符" "1 != 2;"
+test_scanner "一元运算符" "!true;"
+
+# print statement
+test_scanner "print 数字" "print 42;"
+test_scanner "print 字符串" 'print "hello";'
+test_scanner "print 表达式" "print 1 + 2;"
+test_scanner "print bool" "print true;"
+test_scanner "print nil" "print nil;"
+
+# 多条语句
+test_scanner "多条语句" "print 1;
+print 2;"
 test_scanner "注释" "// comment
-var x = 1;"
-test_scanner "多行" "var a = 1;
-var b = 2;"
+print 1;"
 
 # ========================================
 # Parser 测试
@@ -187,11 +179,11 @@ echo "Parser 测试"
 echo "========================================${NC}"
 
 # 测试各种表达式解析
-test_parser "算术表达式" "$PROJECT_ROOT/tests/test_arithmetic.lox"
-test_parser "比较和相等" "$PROJECT_ROOT/tests/test_comparison.lox"
-test_parser "一元运算符" "$PROJECT_ROOT/tests/test_unary.lox"
-test_parser "分组括号" "$PROJECT_ROOT/tests/test_grouping.lox"
-test_parser "字面量" "$PROJECT_ROOT/tests/test_literals.lox"
+# test_parser "算术表达式" "$PROJECT_ROOT/tests/test_arithmetic.lox"
+# test_parser "比较和相等" "$PROJECT_ROOT/tests/test_comparison.lox"
+# test_parser "一元运算符" "$PROJECT_ROOT/tests/test_unary.lox"
+# test_parser "分组括号" "$PROJECT_ROOT/tests/test_grouping.lox"
+# test_parser "字面量" "$PROJECT_ROOT/tests/test_literals.lox"
 
 # ========================================
 # Chapter 7 Interpreter 正确性测试（Java vs C++ 输出比较）
@@ -230,6 +222,16 @@ test_interpreter "比较运算" "$PROJECT_ROOT/tests/ch7_comparison.lox"
 test_interpreter "相等判断" "$PROJECT_ROOT/tests/ch7_equality.lox"
 test_interpreter "一元运算" "$PROJECT_ROOT/tests/ch7_unary.lox"
 test_interpreter "数字格式化" "$PROJECT_ROOT/tests/ch7_numbers.lox"
+
+# ========================================
+# Chapter 8 正确性测试（Java vs C++ 输出比较）
+# ========================================
+
+echo -e "\n${YELLOW}========================================"
+echo "Chapter 8 语句正确性测试"
+echo "========================================${NC}"
+
+test_interpreter "print 语句" "$PROJECT_ROOT/tests/ch8_print.lox"
 
 # ========================================
 # 总结

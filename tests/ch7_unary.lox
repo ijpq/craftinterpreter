@@ -1,6 +1,6 @@
 // Chapter 7: Unary operators
--5
-!true
-!false
-!nil
--(1 + 2)
+-5;
+!true;
+!false;
+!nil;
+-(1 + 2);

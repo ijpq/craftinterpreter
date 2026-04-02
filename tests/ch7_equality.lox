@@ -1,9 +1,9 @@
 // Chapter 7: Equality
-1 == 1
-1 == 2
-nil == nil
-true == true
-true == false
-"a" == "a"
-"a" == "b"
-1 != 2
+1 == 1;
+1 == 2;
+nil == nil;
+true == true;
+true == false;
+"a" == "a";
+"a" == "b";
+1 != 2;

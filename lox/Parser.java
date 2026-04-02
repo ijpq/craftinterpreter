@@ -1,29 +1,52 @@
 package lox;
 
-import java.util.List;
-
 import static lox.TokenType.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 class Parser {
   private static class ParseError extends RuntimeException {}
+
   private final List<Token> tokens;
   private int current = 0;
 
   Parser(List<Token> tokens) {
     this.tokens = tokens;
   }
-    Expr parse() {
-    try {
-      return expression();
-    } catch (ParseError error) {
-      return null;
+
+  List<Stmt> parse() {
+    List<Stmt> statements = new ArrayList<>();
+    while (!isAtEnd()) {
+      statements.add(statement());
     }
+
+    return statements;
   }
-    private Expr expression() {
+
+  private Expr expression() {
     return equality();
   }
 
-    private Expr equality() {
+  private Stmt statement() {
+    if (match(PRINT)) return printStatement();
+
+    return expressionStatement();
+  }
+
+  private Stmt printStatement() {
+    Expr value = expression();
+    consume(SEMICOLON, "Expect ';' after value.");
+    return new Stmt.Print(value);
+  }
+
+  private Stmt expressionStatement() {
+    Expr expr = expression();
+    consume(SEMICOLON, "Expect ';' after expression.");
+    return new Stmt.Expression(expr);
+  }
+
+  private Expr equality() {
     Expr expr = comparison();
 
     while (match(BANG_EQUAL, EQUAL_EQUAL)) {
@@ -34,7 +57,8 @@ class Parser {
 
     return expr;
   }
-    private Expr comparison() {
+
+  private Expr comparison() {
     Expr expr = term();
 
     while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
@@ -45,7 +69,8 @@ class Parser {
 
     return expr;
   }
-    private Expr term() {
+
+  private Expr term() {
     Expr expr = factor();
 
     while (match(MINUS, PLUS)) {
@@ -56,7 +81,8 @@ class Parser {
 
     return expr;
   }
-    private Expr factor() {
+
+  private Expr factor() {
     Expr expr = unary();
 
     while (match(SLASH, STAR)) {
@@ -67,7 +93,8 @@ class Parser {
 
     return expr;
   }
-    private Expr unary() {
+
+  private Expr unary() {
     if (match(BANG, MINUS)) {
       Token operator = previous();
       Expr right = unary();
@@ -76,7 +103,8 @@ class Parser {
 
     return primary();
   }
-    private Expr primary() {
+
+  private Expr primary() {
     if (match(FALSE)) return new Expr.Literal(false);
     if (match(TRUE)) return new Expr.Literal(true);
     if (match(NIL)) return new Expr.Literal(null);
@@ -92,7 +120,8 @@ class Parser {
     }
     throw error(peek(), "Expect expression.");
   }
-    private boolean match(TokenType... types) {
+
+  private boolean match(TokenType... types) {
     for (TokenType type : types) {
       if (check(type)) {
         advance();
@@ -102,20 +131,24 @@ class Parser {
 
     return false;
   }
-    private Token consume(TokenType type, String message) {
+
+  private Token consume(TokenType type, String message) {
     if (check(type)) return advance();
 
     throw error(peek(), message);
   }
-    private boolean check(TokenType type) {
+
+  private boolean check(TokenType type) {
     if (isAtEnd()) return false;
     return peek().type == type;
   }
-    private Token advance() {
+
+  private Token advance() {
     if (!isAtEnd()) current++;
     return previous();
   }
-    private boolean isAtEnd() {
+
+  private boolean isAtEnd() {
     return peek().type == EOF;
   }
 
@@ -126,11 +159,13 @@ class Parser {
   private Token previous() {
     return tokens.get(current - 1);
   }
-    private ParseError error(Token token, String message) {
+
+  private ParseError error(Token token, String message) {
     Lox.error(token, message);
     return new ParseError();
   }
-    private void synchronize() {
+
+  private void synchronize() {
     advance();
 
     while (!isAtEnd()) {
