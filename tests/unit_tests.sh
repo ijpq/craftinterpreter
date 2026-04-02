@@ -201,7 +201,11 @@ test_interpreter() {
 
     cd "$PROJECT_ROOT"
     java_output=$(java -cp "$PROJECT_ROOT" lox.Lox "$test_file" 2>&1)
-    cpp_output=$(DYLD_LIBRARY_PATH="$PROJECT_ROOT/build" "$PROJECT_ROOT/build/craftinginterpreter" "$test_file" 2>&1)
+    if [[ "$(uname)" == "Darwin" ]]; then
+        cpp_output=$(DYLD_LIBRARY_PATH="$PROJECT_ROOT/build" "$PROJECT_ROOT/build/craftinginterpreter" "$test_file" 2>&1)
+    else
+        cpp_output=$(LD_LIBRARY_PATH="$PROJECT_ROOT/build" "$PROJECT_ROOT/build/craftinginterpreter" "$test_file" 2>&1)
+    fi
 
     echo "    --- Java ---"
     echo "$java_output" | sed 's/^/      /'
