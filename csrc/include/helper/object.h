@@ -31,13 +31,34 @@ struct TypeIndex<T, U, Res...>
 
 template <typename... Ts>
 struct Object {
- private:
-  std::tuple<Ts...> TypeList;
-  alignas(std::max({alignof(Ts)...})) char buf[std::max({sizeof(Ts)...})];
-  size_t index_;
+  // copy ctor
+  Object(Object<Ts...>& other) {
+    constexpr_get_update(std::index_sequence_for<Ts...>{}, other);
+  }
 
- public:
-  // Object(Ts&&... ts) { TypeList = std::make_tuple(std::forward<Ts>(ts)...); }
+  // copy assignment
+  Object& operator=(Object<Ts...>& rhs) {
+    destroy();  // since we have already value in buf, free it to avoid leakage.
+    constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
+    return *this;
+  }
+
+  // move ctor
+  Object(Object<Ts...>&& other) {
+    constexpr_get_move(std::index_sequence_for<Ts...>{}, std::move(other));
+  }
+
+  // move assignment
+  Object& operator=(Object<Ts...>&& other) {
+    destroy();  // since we have already value in buf, free it to avoid leakage.
+    constexpr_get_move(std::index_sequence_for<Ts...>{}, std::move(other));
+    return *this;
+  }
+
+  // converting ctor
+  Object(std::variant<Ts...>& rhs) {
+    constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
+  }
 
   template <size_t... I>
   bool isEqual(std::index_sequence<I...> _, Object& rhs) {
@@ -82,33 +103,10 @@ struct Object {
     update_value(std::forward<Alternative>(T_j));
   }
 
-  template <size_t... I>
-  void constexpr_get_update(std::index_sequence<I...> _,
-                            std::variant<Ts...>& rhs) {
-    ((I == rhs.index() ? (update_value(std::get<I>(rhs)), true) : false) ||
-     ...);
-  }
-
-  Object(std::variant<Ts...>& rhs) {
-    constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
-  }
-
-  Object& operator=(std::variant<Ts...>& rhs) {
-    constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
-    return *this;
-  }
-
-  template <typename T>
-  void update_value(T&& val) {
-    index_ = TypeIndex<std::decay_t<T>, Ts...>::value;
-    construct(std::forward<T>(val));
-    // using Type = T;
-  }
-
   template <typename T>
   void construct(T&& val) {
     using T_ = std::decay_t<T>;
-    new (buf) T_(val);
+    new (buf) T_(std::forward<T>(val));
   }
 
   template <typename T>
@@ -131,11 +129,64 @@ struct Object {
 
   void destroy() noexcept { destroy_impl(std::index_sequence_for<Ts...>{}); }
 
+  // template <typename T>
+  // constexpr T& get() {
+  //   auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
+  //   if (index != index_) throw std::exception();
+  //   auto& ret = *reinterpret_cast<T*>(buf);
+  //   return ret;
+  // }
+
   template <typename T>
   constexpr T& get() {
     auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
     if (index != index_) throw std::exception();
     auto& ret = *reinterpret_cast<T*>(buf);
     return ret;
+  }
+  ~Object() { destroy(); }
+
+ private:
+  std::tuple<Ts...> TypeList;
+  alignas(std::max({alignof(Ts)...})) char buf[std::max({sizeof(Ts)...})];
+  size_t index_;
+
+  template <size_t... I>
+  void constexpr_get_update(std::index_sequence<I...> _,
+                            std::variant<Ts...>& rhs) {
+    ((I == rhs.index() ? (update_value(std::get<I>(rhs)), true) : false) ||
+     ...);
+  }
+
+  template <size_t... I>
+  void constexpr_get_update(std::index_sequence<I...> _, Object<Ts...>& rhs) {
+    ((I == rhs.index()
+          ? (update_value(
+                 rhs.get<std::tuple_element_t<I, std::tuple<Ts...>>>()),
+             true)
+          : false) ||
+     ...);
+  }
+
+  template <typename T>
+  void move_value(T&& val) {
+    index_ = TypeIndex<std::decay_t<T>, Ts...>::value;
+    construct(std::forward<T>(val));
+  }
+
+  template <typename T>
+  void update_value(T&& val) {
+    index_ = TypeIndex<std::decay_t<T>, Ts...>::value;
+    construct(std::forward<T>(val));
+  }
+
+  template <size_t... I>
+  void constexpr_get_move(std::index_sequence<I...> _, Object<Ts...>&& other) {
+    (((I == other.index())
+          ? (move_value(std::move(
+                 other.get<std::tuple_element_t<I, std::tuple<Ts...>>>())),
+             true)
+          : false) ||
+     ...);
   }
 };
