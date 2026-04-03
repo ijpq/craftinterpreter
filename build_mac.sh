@@ -1,18 +1,17 @@
 #!/bin/bash
 
-# 删除旧的 build 目录
-rm -rf build
-
-# 创建并进入 build 目录
-mkdir build
+# 创建 build 目录（如果不存在）
+mkdir -p build
 cd build
 
 # 设置使用GCC（修改版本号为你安装的版本）
 export CC=/usr/local/bin/gcc-15
 export CXX=/usr/local/bin/g++-15
 
-# 配置 CMake
-cmake ..
+# 配置 CMake（仅在未配置时）
+if [ ! -f CMakeCache.txt ]; then
+    cmake ..
+fi
 
 # 编译
 cmake --build .

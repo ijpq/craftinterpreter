@@ -196,6 +196,62 @@ TEST_F(InterpreterTest, NilNotEqualFalse) {
 }
 
 // ============================================================
+// Grouping
+// ============================================================
+
+TEST_F(InterpreterTest, Grouping) {
+  auto inner =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
+  syntax::Grouping g(std::move(inner));
+  EXPECT_DOUBLE_EQ(eval(&g).get<double>(), 42.0);
+}
+
+// ============================================================
+// Additional Unary
+// ============================================================
+
+TEST_F(InterpreterTest, UnaryBangFalse) {
+  auto inner =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  syntax::Unary u(tok(Lexeme::TokenType::BANG, "!"), std::move(inner));
+  EXPECT_EQ(eval(&u).get<bool>(), true);
+}
+
+// ============================================================
+// Additional Comparison
+// ============================================================
+
+TEST_F(InterpreterTest, Less) {
+  auto l =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
+  auto r =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(3.0));
+  syntax::Binary b(std::move(l), tok(Lexeme::TokenType::LESS, "<"),
+                   std::move(r));
+  EXPECT_EQ(eval(&b).get<bool>(), true);
+}
+
+TEST_F(InterpreterTest, GreaterEqual) {
+  auto l =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(3.0));
+  auto r =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(3.0));
+  syntax::Binary b(std::move(l), tok(Lexeme::TokenType::GREATER_EQUAL, ">="),
+                   std::move(r));
+  EXPECT_EQ(eval(&b).get<bool>(), true);
+}
+
+TEST_F(InterpreterTest, LessEqual) {
+  auto l =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(3.0));
+  auto r =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(3.0));
+  syntax::Binary b(std::move(l), tok(Lexeme::TokenType::LESS_EQUAL, "<="),
+                   std::move(r));
+  EXPECT_EQ(eval(&b).get<bool>(), true);
+}
+
+// ============================================================
 // Runtime errors
 // ============================================================
 
@@ -212,6 +268,16 @@ TEST_F(InterpreterTest, PlusMixedTypesThrows) {
   auto r = std::make_unique<syntax::Literal>(
       syntax::Literal::LiteralValue(std::string("s")));
   syntax::Binary b(std::move(l), tok(Lexeme::TokenType::PLUS, "+"),
+                   std::move(r));
+  EXPECT_THROW(eval(&b), interpreter::InterpreterRuntimeError);
+}
+
+TEST_F(InterpreterTest, StarOnStringThrows) {
+  auto l = std::make_unique<syntax::Literal>(
+      syntax::Literal::LiteralValue(std::string("a")));
+  auto r =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
+  syntax::Binary b(std::move(l), tok(Lexeme::TokenType::STAR, "*"),
                    std::move(r));
   EXPECT_THROW(eval(&b), interpreter::InterpreterRuntimeError);
 }
@@ -234,6 +300,10 @@ TEST_F(InterpreterTest, StringifyNil) {
 
 TEST_F(InterpreterTest, StringifyTrue) {
   EXPECT_EQ(syntax::stringify(LoxValueType(true)), "true");
+}
+
+TEST_F(InterpreterTest, StringifyString) {
+  EXPECT_EQ(syntax::stringify(LoxValueType(std::string("hello"))), "hello");
 }
 
 // ============================================================

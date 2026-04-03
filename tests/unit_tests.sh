@@ -43,6 +43,22 @@ cd "$PROJECT_ROOT"
 echo -e "\n${GREEN}编译完成${NC}"
 
 # ========================================
+# 运行 Java Ground Truth 测试
+# ========================================
+
+echo -e "\n${YELLOW}========================================
+Java Ground Truth Tests
+========================================${NC}"
+
+cd "$PROJECT_ROOT"
+if java -cp "$PROJECT_ROOT" lox.InterpreterTest; then
+    echo -e "${GREEN}Java 测试通过 ✓${NC}"
+else
+    echo -e "${RED}Java 测试失败 ✗${NC}"
+    ((FAILED++))
+fi
+
+# ========================================
 # 运行 GTest
 # ========================================
 

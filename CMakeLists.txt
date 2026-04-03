@@ -99,7 +99,7 @@ target_include_directories(interpreter_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/csrc/include
 )
 target_link_libraries(interpreter_test
-    GTest::gtest_main
+    GTest::gtest
     expr_lib
     lox_core
     interpreter_lib
@@ -113,7 +113,7 @@ target_compile_definitions(lox_integration_test PRIVATE
     LOX_BINARY="$<TARGET_FILE:craftinginterpreter>"
 )
 target_link_libraries(lox_integration_test
-    GTest::gtest_main
+    GTest::gtest
 )
 
 enable_testing()
