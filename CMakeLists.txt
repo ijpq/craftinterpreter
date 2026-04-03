@@ -5,6 +5,7 @@ project(craftinginterpreter LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ccache 支持
 find_program(CCACHE_PROGRAM ccache)
@@ -79,41 +80,45 @@ add_executable(object_test
 # ========================================
 # GTest 测试
 # ========================================
-find_package(GTest QUIET)
-if(GTest_FOUND)
-    message(STATUS "GTest found, building tests")
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        v1.14.0
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-    # Unit tests (direct AST construction)
-    add_executable(interpreter_test
-        tests/interpreter_test.cpp
-    )
-    target_link_libraries(interpreter_test
-        GTest::GTest
-        GTest::Main
-        expr_lib
-        lox_core
-        interpreter_lib
-    )
+# Unit tests (direct AST construction)
+add_executable(interpreter_test
+    tests/interpreter_test.cpp
+)
+target_include_directories(interpreter_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/csrc/include
+)
+target_link_libraries(interpreter_test
+    GTest::gtest_main
+    expr_lib
+    lox_core
+    interpreter_lib
+)
 
-    # Integration tests (subprocess, runs full .lox source)
-    add_executable(lox_integration_test
-        tests/lox_integration_test.cpp
-    )
-    target_compile_definitions(lox_integration_test PRIVATE
-        LOX_BINARY="$<TARGET_FILE:craftinginterpreter>"
-    )
-    target_link_libraries(lox_integration_test
-        GTest::GTest
-        GTest::Main
-    )
+# Integration tests (subprocess, runs full .lox source)
+add_executable(lox_integration_test
+    tests/lox_integration_test.cpp
+)
+target_compile_definitions(lox_integration_test PRIVATE
+    LOX_BINARY="$<TARGET_FILE:craftinginterpreter>"
+)
+target_link_libraries(lox_integration_test
+    GTest::gtest_main
+)
 
-    enable_testing()
-    add_test(NAME interpreter_test    COMMAND interpreter_test)
-    add_test(NAME lox_integration_test COMMAND lox_integration_test)
-else()
-    message(STATUS "GTest not found, skipping tests")
-    message(STATUS "Install: brew install googletest (macOS) | apt install libgtest-dev (Ubuntu)")
-endif()
+enable_testing()
+add_test(NAME interpreter_test     COMMAND interpreter_test)
+add_test(NAME lox_integration_test COMMAND lox_integration_test)
 
 
 # ========================================
@@ -147,3 +152,4 @@ endforeach()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
+

@@ -1,0 +1,11 @@
+// Chapter 8: var declaration + variable reference
+var a = 1;
+print a;
+
+var b = 2;
+var c = 3;
+print b + c;
+
+// var without initializer → nil
+var d;
+print d;

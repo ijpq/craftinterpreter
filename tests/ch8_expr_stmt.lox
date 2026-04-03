@@ -1,0 +1,4 @@
+// Chapter 8: expression statement (value discarded)
+1 + 2;
+"hello";
+true;

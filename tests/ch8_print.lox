@@ -4,3 +4,5 @@ print "hello";
 print true;
 print nil;
 print 3.14;
+var a;
+var a = 1;

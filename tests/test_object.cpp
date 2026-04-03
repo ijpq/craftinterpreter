@@ -2,7 +2,7 @@
 #include <string>
 #include <variant>
 
-#include "../csrc/include/helper/object.h"
+#include "../csrc/include/interpreter.h"
 
 using namespace interpreter;
 using namespace std;

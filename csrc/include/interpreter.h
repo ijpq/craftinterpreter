@@ -42,6 +42,7 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     auto right = evaluate(expr->right.get());
     switch (expr->op.type) {
       case Lexeme::TokenType::MINUS:
+        checkNumberOperand(expr->op, right);
         return -1 * right.get<double>();
       case Lexeme::TokenType::BANG:
         return !isTruthy(right);

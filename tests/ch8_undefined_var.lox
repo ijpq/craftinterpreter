@@ -1,0 +1,2 @@
+// Chapter 8: undefined variable should produce runtime error
+print a;
