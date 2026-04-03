@@ -1,4 +1,6 @@
 #pragma once
+#include <variant>
+
 #include "expr.h"
 #include "tokentype.h"
 namespace SST {
@@ -8,6 +10,13 @@ namespace SST {
 
 program        → statement* EOF ;
 
+declaration    → varDecl
+               | statement ;
+varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+primary        → "true" | "false" | "nil"
+               | NUMBER | STRING
+               | "(" expression ")"
+               | IDENTIFIER ;
 statement      → exprStmt
        | printStmt ;
 
@@ -17,7 +26,12 @@ printStmt      → "print" expression ";" ;
 // clang-format on
 class Expression;
 class Print;
+class Var;
 using StmtVisitorType = void;
+
+/*
+hold AST as member var, provide accept() to interpreter
+*/
 struct Stmt {  // statement
   template <typename R>
   struct Visitor {
@@ -28,7 +42,7 @@ struct Stmt {  // statement
     // virtual R visitIfStmt(If* stmt) = 0;
     virtual R visitPrintStmt(Print* stmt) = 0;
     // virtual R visitReturnStmt(Return* stmt) = 0;
-    // virtual R visitVarStmt(Var* stmt) = 0;
+    virtual R visitVarStmt(Var* stmt) = 0;
     // virtual R visitWhileStmt(While* stmt) = 0;
     ~Visitor() = default;
   };
@@ -57,6 +71,18 @@ struct Print : Stmt {                        // printStmt
 
   StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
     return visitor->visitPrintStmt(this);
+  }
+};
+
+struct Var : Stmt {
+  Lexeme::Token identifier;
+  std::unique_ptr<syntax::Expr> init;
+  // LoxValueType value;
+  Var(Lexeme::Token name, std::unique_ptr<syntax::Expr> init)
+      : init(std::move(init)), identifier(name) {}
+
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
+    return visitor->visitVarStmt(this);
   }
 };
 }  // namespace SST

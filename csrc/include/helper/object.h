@@ -6,7 +6,6 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
-namespace interpreter {
 // clang-format off
 /*
 Lox type Lox类   Java representation Java表示
@@ -140,6 +139,3 @@ struct Object {
     return ret;
   }
 };
-
-}  // namespace interpreter
-   // in variant class declaration.

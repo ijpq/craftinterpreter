@@ -8,6 +8,7 @@
 #include <variant>
 #include <vector>
 
+#include "environment.h"
 #include "expr.h"
 #include "helper/object.h"
 #include "runtimeerror.h"
@@ -16,12 +17,11 @@
 #include "tokentype.h"
 namespace interpreter {
 
-using LoxValueType = syntax::Visitor::ReturnType;
-
 struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   /*
   interpreter class act as visitor to AST, and compute each tree's value
   */
+  Environment env;
   void interpret(syntax::Expr* expr);
 
   void interpret(std::vector<std::unique_ptr<SST::Stmt>>& statements);
@@ -50,6 +50,7 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     }
     return std::monostate{};
   }
+
   bool isEqual(LoxValueType& left, LoxValueType& right) {
     return left == right ? true : false;
   }
@@ -58,13 +59,15 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     if (operand.hold_alternative<double>()) return;
     throw InterpreterRuntimeError(op, "Operands must be numbers");
   }
+
   void checkNumberOperand(Lexeme::Token op, LoxValueType left,
                           LoxValueType right) {
     if (left.hold_alternative<double>() && right.hold_alternative<double>())
       return;
     throw InterpreterRuntimeError(op, "Operands must be numbers");
   }
-  LoxValueType visitBinaryExpr(syntax::Binary* expr) {
+
+  LoxValueType visitBinaryExpr(syntax::Binary* expr) override {
     LoxValueType left = evaluate(expr->left.get());
     LoxValueType right = evaluate(expr->right.get());
     switch (expr->op.type) {
@@ -115,14 +118,28 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     return true;
   }
 
+  LoxValueType visitVariableExpr(syntax::Variable* expr) override {
+    return env.get(expr->name);
+  }
+  /*
+grab statement , call accept() of AST inside the statement. Since param visitor
+is interpreter, it defined methods that calculate value from AST
+  */
   SST::StmtVisitorType visitExpressionStmt(SST::Expression* stmt) override {
-    evaluate(stmt->expression.get());
-    return;  // discard returned value
+    evaluate(stmt->expression.get());  // discard returned value
+    return;
   }
 
-  void visitPrintStmt(SST::Print* stmt) override {
+  SST::StmtVisitorType visitPrintStmt(SST::Print* stmt) override {
     LoxValueType value = evaluate(stmt->expression.get());
     std::cout << syntax::stringify(value) << std::endl;
+  }
+
+  SST::StmtVisitorType visitVarStmt(SST::Var* stmt) override {
+    LoxValueType value = stmt->init ? evaluate(stmt->init.get())
+                                    : LoxValueType(std::monostate{});
+    // bind name and value
+    env.define(Environment::Key(stmt->identifier.lexeme), value);
   }
 };
 

@@ -6,6 +6,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# ccache 支持
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    message(STATUS "ccache found: ${CCACHE_PROGRAM}")
+else()
+    message(STATUS "ccache not found, building without cache")
+endif()
+
 # Shared library rpath 设置（macOS 开发阶段）
 set(CMAKE_MACOSX_RPATH ON)
 set(BUILD_SHARED_LIBS ON)
@@ -65,6 +75,45 @@ target_link_libraries(test_ast_printer expr_lib lox_core)
 
 add_executable(object_test
     tests/test_object.cpp)
+
+# ========================================
+# GTest 测试
+# ========================================
+find_package(GTest QUIET)
+if(GTest_FOUND)
+    message(STATUS "GTest found, building tests")
+
+    # Unit tests (direct AST construction)
+    add_executable(interpreter_test
+        tests/interpreter_test.cpp
+    )
+    target_link_libraries(interpreter_test
+        GTest::GTest
+        GTest::Main
+        expr_lib
+        lox_core
+        interpreter_lib
+    )
+
+    # Integration tests (subprocess, runs full .lox source)
+    add_executable(lox_integration_test
+        tests/lox_integration_test.cpp
+    )
+    target_compile_definitions(lox_integration_test PRIVATE
+        LOX_BINARY="$<TARGET_FILE:craftinginterpreter>"
+    )
+    target_link_libraries(lox_integration_test
+        GTest::GTest
+        GTest::Main
+    )
+
+    enable_testing()
+    add_test(NAME interpreter_test    COMMAND interpreter_test)
+    add_test(NAME lox_integration_test COMMAND lox_integration_test)
+else()
+    message(STATUS "GTest not found, skipping tests")
+    message(STATUS "Install: brew install googletest (macOS) | apt install libgtest-dev (Ubuntu)")
+endif()
 
 
 # ========================================

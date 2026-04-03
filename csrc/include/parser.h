@@ -53,7 +53,9 @@ struct Parser {
   Parser(std::vector<Token> tokens) : tokens(tokens) {}
 
   bool isAtEnd() { return peek().type == TokenType::_EOF; }
+
   inline void advance() { current++; }
+
   bool match(std::initializer_list<TokenType> types) {
     for (auto type : types) {
       if (tokens[current].type == type) {
@@ -64,6 +66,7 @@ struct Parser {
     return false;
   }
   Token& peek() { return tokens[current]; }
+
   Token& previous() { return tokens[current - 1]; }
 
   std::unique_ptr<Expr> expression() { return std::move(equality()); }
@@ -136,22 +139,24 @@ struct Parser {
       Token op = previous();
       switch (op.type) {
         case (TokenType::NUMBER):
-          return std::move(std::make_unique<syntax::Literal>(
-              syntax::Literal::LiteralValue(std::get<double>(op.literal))));
+          return std::make_unique<syntax::Literal>(
+              syntax::Literal::LiteralValue(std::get<double>(op.literal)));
         case (TokenType::STRING):
-          return std::move(
-              std::make_unique<syntax::Literal>(std::get<1>(op.literal)));
+          return std::make_unique<syntax::Literal>(std::get<1>(op.literal));
 
         case (TokenType::TRUE):
-          return std::move(std::make_unique<syntax::Literal>(true));
+          return std::make_unique<syntax::Literal>(true);
         case (TokenType::FALSE):
-          return std::move(std::make_unique<syntax::Literal>(false));
+          return std::make_unique<syntax::Literal>(false);
         case (TokenType::NIL):
-          return std::move(std::make_unique<syntax::Literal>(
-              syntax::Literal::LiteralValue(std::monostate{})));
+          return std::make_unique<syntax::Literal>(
+              syntax::Literal::LiteralValue(std::monostate{}));
         default:
           throw ParserError(tokens[current], "unexpected token");
       }
+    } else if (match({TokenType::IDENTIFIER})) {
+      Token identifier = previous();
+      return std::make_unique<syntax::Variable>(identifier);
     } else if (match({TokenType::LEFT_PAREN})) {
       auto expr = expression();
       consume(TokenType::RIGHT_PAREN, "expect right parenthesis after group");
@@ -193,11 +198,14 @@ struct Parser {
   std::vector<std::unique_ptr<SST::Stmt>> parse() {
     std::vector<std::unique_ptr<SST::Stmt>> statements;
     while (!isAtEnd()) {
-      statements.push_back(statement());
+      statements.push_back(declaration());
     }
     return statements;
   }
 
+  /*
+  build AST , use AST to build statement
+  */
   std::unique_ptr<SST::Stmt> statement() {
     if (match({TokenType::PRINT})) return printStatement();
     return expressionStatement();
@@ -214,5 +222,33 @@ struct Parser {
     consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after expression.");
     return std::make_unique<SST::Expression>(std::move(expr));
   }
+
+  std::unique_ptr<SST::Var> varDeclaration() {
+    if (match({TokenType::IDENTIFIER})) {
+      Token identifier = previous();
+      std::unique_ptr<syntax::Expr> initializer;
+      if (match({TokenType::EQUAL})) {
+        initializer = expression();
+      } else {
+        initializer = nullptr;
+      }
+      consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after expression.");
+      return std::make_unique<SST::Var>(identifier, std::move(initializer));
+    }
+  }
+
+  std::unique_ptr<SST::Stmt> declaration() {
+    try {
+      if (match({TokenType::VAR})) return varDeclaration();
+      return statement();
+    } catch (ParserError& e) {
+      synchronize();
+      return nullptr;
+    }
+  }
+  // std::unique_ptr<SST::Var> varStatement() {
+  //   auto stmt = varDeclaration();
+  //   return stmt;
+  // }
 };
 }  // namespace syntax

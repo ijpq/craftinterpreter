@@ -4,6 +4,7 @@
 #include <variant>
 
 #include "helper/object.h"
+#include "loxvalue.h"
 #include "token.h"
 namespace syntax {
 class Binary;
@@ -12,16 +13,17 @@ class Literal;
 class Unary;
 using Lexeme::Token;
 class Expr;
+class Variable;
 
 struct Visitor {
-  using ReturnType =
-      interpreter::Object<double, std::string, bool, std::monostate>;
+  using ReturnType = LoxValueType;
 
  public:
   virtual ReturnType visitBinaryExpr(Binary* expr) = 0;
   virtual ReturnType visitGroupingExpr(Grouping* expr) = 0;
   virtual ReturnType visitLiteralExpr(Literal* expr) = 0;
   virtual ReturnType visitUnaryExpr(Unary* expr) = 0;
+  virtual ReturnType visitVariableExpr(syntax::Variable* expr) = 0;
 
   ~Visitor() = default;
 };
@@ -34,6 +36,7 @@ struct ASTPrinter : Visitor {
   ReturnType visitUnaryExpr(Unary* expr);
   ReturnType prefix_expr(std::string name, std::initializer_list<Expr*> exprs);
   std::string print(Expr* expr);
+  ReturnType visitVariableExpr(syntax::Variable* expr) {}
 };
 
 struct Expr {
@@ -96,6 +99,14 @@ struct Unary : Expr {
   }
   Token op;
   std::unique_ptr<Expr> right;
+};
+
+struct Variable : Expr {
+  Variable(Token name) : name(name) {}
+  ReturnType accept(Visitor* visitor) override {
+    return visitor->visitVariableExpr(this);
+  }
+  Token name;
 };
 
 std::string stringify(Visitor::ReturnType obj);
