@@ -32,12 +32,12 @@ struct TypeIndex<T, U, Res...>
 template <typename... Ts>
 struct Object {
   // copy ctor
-  Object(Object<Ts...>& other) {
+  Object(const Object<Ts...>& other) {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, other);
   }
 
   // copy assignment
-  Object& operator=(Object<Ts...>& rhs) {
+  Object& operator=(const Object<Ts...>& rhs) {
     destroy();  // since we have already value in buf, free it to avoid leakage.
     constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
     return *this;
@@ -56,7 +56,7 @@ struct Object {
   }
 
   // converting ctor
-  Object(std::variant<Ts...>& rhs) {
+  Object(const std::variant<Ts...>& rhs) {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
   }
 
