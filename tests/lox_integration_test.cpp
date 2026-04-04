@@ -22,7 +22,7 @@ static std::string getLoxDir() {
 // Run lox source string through the binary, capture stdout+stderr
 static std::string runLox(const std::string& source) {
   char tmpfile[] = "/tmp/lox_test_XXXXXX.lox";
-  int fd = mkstemp(tmpfile);
+  int fd = mkstemps(tmpfile, 4);  // 4 = strlen(".lox")
   if (fd < 0) return "[mkstemp failed]";
   write(fd, source.c_str(), source.size());
   close(fd);
