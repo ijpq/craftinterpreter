@@ -85,4 +85,5 @@ struct Var : Stmt {
     return visitor->visitVarStmt(this);
   }
 };
+struct Assign : Stmt {};
 }  // namespace SST

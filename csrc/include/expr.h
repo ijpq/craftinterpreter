@@ -14,6 +14,7 @@ class Unary;
 using Lexeme::Token;
 class Expr;
 class Variable;
+class Assign;
 
 struct Visitor {
   using ReturnType = LoxValueType;
@@ -23,7 +24,8 @@ struct Visitor {
   virtual ReturnType visitGroupingExpr(Grouping* expr) = 0;
   virtual ReturnType visitLiteralExpr(Literal* expr) = 0;
   virtual ReturnType visitUnaryExpr(Unary* expr) = 0;
-  virtual ReturnType visitVariableExpr(syntax::Variable* expr) = 0;
+  virtual ReturnType visitVariableExpr(Variable* expr) = 0;
+  virtual ReturnType visitAssignExpr(Assign* expr) = 0;
 
   ~Visitor() = default;
 };
@@ -37,6 +39,7 @@ struct ASTPrinter : Visitor {
   ReturnType prefix_expr(std::string name, std::initializer_list<Expr*> exprs);
   std::string print(Expr* expr);
   ReturnType visitVariableExpr(syntax::Variable* expr) {}
+  ReturnType visitAssignExpr(syntax::Assign* expr) {}
 };
 
 struct Expr {
@@ -107,6 +110,16 @@ struct Variable : Expr {
     return visitor->visitVariableExpr(this);
   }
   Token name;
+};
+
+struct Assign : Expr {
+  Assign(Token name, std::unique_ptr<Expr> value)
+      : name(name), value(std::move(value)) {}
+  ReturnType accept(Visitor* visitor) override {
+    return visitor->visitAssignExpr(this);
+  }
+  Token name;
+  std::unique_ptr<Expr> value;
 };
 
 std::string stringify(Visitor::ReturnType obj);

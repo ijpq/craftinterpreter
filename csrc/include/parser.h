@@ -31,7 +31,9 @@ operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
                | "+"  | "-"  | "*" | "/" ;
 */
 /*
-expression     → equality ;
+expression     → assignment ;
+assignment     → IDENTIFIER "=" assignment
+               | equality ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
@@ -69,7 +71,7 @@ struct Parser {
 
   Token& previous() { return tokens[current - 1]; }
 
-  std::unique_ptr<Expr> expression() { return std::move(equality()); }
+  std::unique_ptr<Expr> expression() { return assignment(); }
 
   std::unique_ptr<Expr> equality() {
     auto expr = std::unique_ptr<Expr>(comparison());
@@ -221,6 +223,26 @@ struct Parser {
     std::unique_ptr<Expr> expr = expression();
     consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after expression.");
     return std::make_unique<SST::Expression>(std::move(expr));
+  }
+
+  std::unique_ptr<Expr> assignment() {
+    std::unique_ptr<Expr> expr =
+        equality();  // expression on the left side of stmt
+    if (match({TokenType::EQUAL})) {
+      Token equals = previous();
+      std::unique_ptr<Expr> value = assignment();
+
+      Expr* var = nullptr;
+      if ((var = dynamic_cast<Variable*>(expr.get())) !=
+          nullptr) {  // if left is variable
+        Token name = dynamic_cast<Variable*>(expr.get())->name;
+        return std::make_unique<Assign>(name, std::move(value));
+      }
+
+      error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
   }
 
   std::unique_ptr<SST::Var> varDeclaration() {

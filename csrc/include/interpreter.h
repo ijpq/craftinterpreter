@@ -11,6 +11,7 @@
 #include "environment.h"
 #include "expr.h"
 #include "helper/object.h"
+#include "loxvalue.h"
 #include "runtimeerror.h"
 #include "stmt.h"
 #include "token.h"
@@ -141,6 +142,11 @@ is interpreter, it defined methods that calculate value from AST
                                     : LoxValueType(std::monostate{});
     // bind name and value
     env.define(Environment::Key(stmt->identifier.lexeme), value);
+  }
+
+  LoxValueType visitAssignExpr(syntax::Assign* expr) override {
+    LoxValueType value = evaluate(expr->value.get());
+    env.assign(expr->name, value);
   }
 };
 
