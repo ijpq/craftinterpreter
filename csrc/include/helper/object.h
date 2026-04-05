@@ -1,7 +1,6 @@
 #pragma once
 #include <algorithm>
 #include <exception>
-#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -22,15 +21,16 @@ struct TypeIndex;
 
 // if match
 template <typename T, typename... Res>
-struct TypeIndex<T, T, Res...> : std::integral_constant<int, 0> {};
+struct TypeIndex<T, T, Res...> : std::integral_constant<size_t, 0> {};
 
 // if not match
 template <typename T, typename U, typename... Res>
 struct TypeIndex<T, U, Res...>
-    : std::integral_constant<int, 1 + TypeIndex<T, Res...>::value> {};
+    : std::integral_constant<size_t, 1 + TypeIndex<T, Res...>::value> {};
 
 template <typename... Ts>
 struct Object {
+  Object() = default;
   // copy ctor
   Object(const Object<Ts...>& other) {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, other);
@@ -138,12 +138,21 @@ struct Object {
   // }
 
   template <typename T>
+  constexpr const T& get() const {
+    auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
+    if (index != index_) throw std::exception();
+    auto& ret = *reinterpret_cast<const T*>(buf);
+    return ret;
+  }
+
+  template <typename T>
   constexpr T& get() {
     auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
     if (index != index_) throw std::exception();
     auto& ret = *reinterpret_cast<T*>(buf);
     return ret;
   }
+
   ~Object() { destroy(); }
 
  private:
@@ -159,7 +168,8 @@ struct Object {
   }
 
   template <size_t... I>
-  void constexpr_get_update(std::index_sequence<I...> _, Object<Ts...>& rhs) {
+  void constexpr_get_update(std::index_sequence<I...> _,
+                            const Object<Ts...>& rhs) {
     ((I == rhs.index()
           ? (update_value(
                  rhs.get<std::tuple_element_t<I, std::tuple<Ts...>>>()),
