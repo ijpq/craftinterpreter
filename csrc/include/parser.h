@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+
 #include <exception>
 #include <initializer_list>
 #include <memory>
@@ -210,6 +212,8 @@ struct Parser {
   */
   std::unique_ptr<SST::Stmt> statement() {
     if (match({TokenType::PRINT})) return printStatement();
+    if (match({TokenType::LEFT_BRACE}))
+      return std::make_unique<SST::Block>(block());
     return expressionStatement();
   }
 
@@ -223,6 +227,15 @@ struct Parser {
     std::unique_ptr<Expr> expr = expression();
     consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after expression.");
     return std::make_unique<SST::Expression>(std::move(expr));
+  }
+
+  std::vector<std::unique_ptr<SST::Stmt>> block() {
+    std::vector<std::unique_ptr<SST::Stmt>> statements;
+    while (!(TokenType::RIGHT_BRACE == tokens[current].type) && !isAtEnd()) {
+      statements.push_back(declaration());
+    }
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
   }
 
   std::unique_ptr<Expr> assignment() {
@@ -239,7 +252,7 @@ struct Parser {
         return std::make_unique<Assign>(name, std::move(value));
       }
 
-      error(equals, "Invalid assignment target.");
+      // error(equals, "Invalid assignment target.");
     }
 
     return expr;

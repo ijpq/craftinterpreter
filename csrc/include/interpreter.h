@@ -10,6 +10,7 @@
 
 #include "environment.h"
 #include "expr.h"
+#include "helper/guard.h"
 #include "helper/object.h"
 #include "loxvalue.h"
 #include "runtimeerror.h"
@@ -38,6 +39,23 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   LoxValueType evaluate(syntax::Expr* expr) { return expr->accept(this); }
 
   void execute(SST::Stmt* stmt) { stmt->accept(this); }
+
+  void executeBlock(std::vector<std::unique_ptr<SST::Stmt>>&& statements,
+                    Environment env) {
+    Environment previous = std::move(this->env);
+    try {
+      this->env = std::move(env);
+      for (auto&& stmt : statements) execute(stmt.get());
+    } catch (...) {  // if exception do nothing.
+    }
+    ScopeGuard g([&]() { this->env = std::move(previous); });
+  }
+
+  LoxValueType visitAssignExpr(syntax::Assign* expr) override {
+    LoxValueType value = evaluate(expr->value.get());
+    env.assign(expr->name, value);
+    return value;
+  }
 
   LoxValueType visitUnaryExpr(syntax::Unary* expr) override {
     auto right = evaluate(expr->right.get());
@@ -144,9 +162,8 @@ is interpreter, it defined methods that calculate value from AST
     env.define(Environment::Key(stmt->identifier.lexeme), value);
   }
 
-  LoxValueType visitAssignExpr(syntax::Assign* expr) override {
-    LoxValueType value = evaluate(expr->value.get());
-    env.assign(expr->name, value);
+  SST::StmtVisitorType visitBlockStmt(SST::Block* stmt) override {
+    executeBlock(std::move(stmt->statements), Environment{});
   }
 };
 

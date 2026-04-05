@@ -17,9 +17,8 @@ primary        → "true" | "false" | "nil"
                | NUMBER | STRING
                | "(" expression ")"
                | IDENTIFIER ;
-statement      → exprStmt
-       | printStmt ;
-
+statement      → exprStmt | printStmt | block ;
+block          → "{" declaration* "}" ;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 */
@@ -28,6 +27,7 @@ class Expression;
 class Print;
 class Var;
 using StmtVisitorType = void;
+class Block;
 
 /*
 hold AST as member var, provide accept() to interpreter
@@ -35,7 +35,7 @@ hold AST as member var, provide accept() to interpreter
 struct Stmt {  // statement
   template <typename R>
   struct Visitor {
-    // virtual R visitBlockStmt(Block* stmt) = 0;
+    virtual R visitBlockStmt(Block* stmt) = 0;
     // virtual R visitClassStmt(Class* stmt) = 0;
     virtual R visitExpressionStmt(Expression* stmt) = 0;
     // virtual R visitFunctionStmt(Function* stmt) = 0;
@@ -85,5 +85,13 @@ struct Var : Stmt {
     return visitor->visitVarStmt(this);
   }
 };
-struct Assign : Stmt {};
+
+struct Block : Stmt {
+  Block(std::vector<std::unique_ptr<Stmt>>&& statements)
+      : statements(std::move(statements)) {}
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
+    return visitor->visitBlockStmt(this);
+  }
+  std::vector<std::unique_ptr<Stmt>> statements;
+};
 }  // namespace SST

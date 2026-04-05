@@ -1,5 +1,5 @@
 #pragma once
-#include <stdexcept>
+#include <memory>
 #include <unordered_map>
 
 #include "loxvalue.h"
