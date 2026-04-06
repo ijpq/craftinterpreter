@@ -13,11 +13,10 @@ struct Environment {
   using value_type = std::pair<Key, Value>;
 
   std::unordered_map<std::string, LoxValueType> map;
-  std::unique_ptr<Environment> parent_env;
+  Environment* parent_env = nullptr;
 
-  Environment() { parent_env = nullptr; }
-
-  Environment(std::unique_ptr<Environment> env) { parent_env = std::move(env); }
+  Environment() = default;  // used for global scope
+  Environment(Environment* parent_env) : parent_env(parent_env) {}
 
   void define(std::string name, LoxValueType value) {
     map.emplace(std::make_pair(name, value));
@@ -38,7 +37,7 @@ struct Environment {
 
   void assign(const Lexeme::Token& name, LoxValueType value) {
     if (map.find(std::string{name.lexeme}) != map.end()) {
-      map.emplace(std::make_pair(std::string{name.lexeme}, value));
+      map.insert_or_assign(std::string{name.lexeme}, value);
       return;
     }
     if (parent_env != nullptr) {
