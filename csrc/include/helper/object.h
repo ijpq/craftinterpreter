@@ -129,14 +129,6 @@ struct Object {
 
   void destroy() noexcept { destroy_impl(std::index_sequence_for<Ts...>{}); }
 
-  // template <typename T>
-  // constexpr T& get() {
-  //   auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
-  //   if (index != index_) throw std::exception();
-  //   auto& ret = *reinterpret_cast<T*>(buf);
-  //   return ret;
-  // }
-
   template <typename T>
   constexpr const T& get() const {
     auto index = TypeIndex<std::decay_t<T>, Ts...>::value;
@@ -156,13 +148,12 @@ struct Object {
   ~Object() { destroy(); }
 
  private:
-  std::tuple<Ts...> TypeList;
   alignas(std::max({alignof(Ts)...})) char buf[std::max({sizeof(Ts)...})];
-  size_t index_;
+  size_t index_ = 0;
 
   template <size_t... I>
   void constexpr_get_update(std::index_sequence<I...> _,
-                            std::variant<Ts...>& rhs) {
+                            const std::variant<Ts...>& rhs) {
     ((I == rhs.index() ? (update_value(std::get<I>(rhs)), true) : false) ||
      ...);
   }
