@@ -1,9 +1,6 @@
 #pragma once
-#include <cmath>
-#include <cstdio>
 #include <exception>
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -40,15 +37,11 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
 
   void execute(SST::Stmt* stmt) { stmt->accept(this); }
 
-  void executeBlock(std::vector<std::unique_ptr<SST::Stmt>>&& statements,
-                    Environment env) {
-    Environment previous = std::move(this->env);
-    try {
-      this->env = std::move(env);
-      for (auto&& stmt : statements) execute(stmt.get());
-    } catch (...) {  // if exception do nothing.
-    }
-    ScopeGuard g([&]() { this->env = std::move(previous); });
+  void executeBlock(std::vector<std::unique_ptr<SST::Stmt>>&& statements) {
+    Environment previous = std::move(this->env);  // save previous scope
+    this->env.parent_env = &previous;
+    ScopeGuard g([&]() { this->env = std::move(previous); });  // restore
+    for (auto&& stmt : statements) execute(stmt.get());
   }
 
   LoxValueType visitAssignExpr(syntax::Assign* expr) override {
@@ -163,7 +156,7 @@ is interpreter, it defined methods that calculate value from AST
   }
 
   SST::StmtVisitorType visitBlockStmt(SST::Block* stmt) override {
-    executeBlock(std::move(stmt->statements), Environment{});
+    executeBlock(std::move(stmt->statements));
   }
 };
 
