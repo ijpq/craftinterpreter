@@ -224,6 +224,85 @@ TEST(Ch8Var, UndefinedVar) {
 }
 
 // ============================================================
+// Chapter 8 — variable assignment
+// ============================================================
+
+TEST(Ch8Assign, SimpleAssign) {
+  EXPECT_EQ(runLox("var a = 1;\na = 2;\nprint a;"), "2\n");
+}
+
+TEST(Ch8Assign, AssignString) {
+  EXPECT_EQ(runLox("var s = \"hello\";\ns = \"world\";\nprint s;"), "world\n");
+}
+
+TEST(Ch8Assign, AssignExpr) {
+  EXPECT_EQ(runLox("var a = 1;\na = 2 + 3;\nprint a;"), "5\n");
+}
+
+TEST(Ch8Assign, AssignReturnsValue) {
+  // assignment is an expression that returns the assigned value
+  EXPECT_EQ(runLox("var a = 1;\nprint a = 2;"), "2\n");
+}
+
+TEST(Ch8Assign, AssignToNilVar) {
+  EXPECT_EQ(runLox("var a;\na = 42;\nprint a;"), "42\n");
+}
+
+TEST(Ch8Assign, ChainedAssign) {
+  EXPECT_EQ(runLox("var a = 1;\nvar b = 2;\na = b = 3;\nprint a;\nprint b;"),
+            "3\n3\n");
+}
+
+TEST(Ch8Assign, UndefinedAssign) {
+  std::string out = runLox("a = 1;");
+  EXPECT_NE(out.find("Undefined"), std::string::npos)
+      << "Expected 'Undefined' in output, got: " << out;
+}
+
+// ============================================================
+// Chapter 8 — block scoping
+// ============================================================
+
+TEST(Ch8Block, BasicBlock) { EXPECT_EQ(runLox("{ print 1; }"), "1\n"); }
+
+TEST(Ch8Block, VarInBlock) {
+  EXPECT_EQ(runLox("{ var a = 10; print a; }"), "10\n");
+}
+
+TEST(Ch8Block, BlockScopeNotVisibleOutside) {
+  std::string out = runLox("{ var a = 1; }\nprint a;");
+  EXPECT_NE(out.find("Undefined"), std::string::npos)
+      << "Expected 'Undefined' after block scope, got: " << out;
+}
+
+TEST(Ch8Block, OuterVarVisibleInBlock) {
+  EXPECT_EQ(runLox("var a = \"outer\";\n{ print a; }"), "outer\n");
+}
+
+TEST(Ch8Block, ShadowOuterVar) {
+  EXPECT_EQ(
+      runLox("var a = \"outer\";\n{ var a = \"inner\"; print a; }\nprint a;"),
+      "inner\nouter\n");
+}
+
+TEST(Ch8Block, AssignOuterVarInBlock) {
+  EXPECT_EQ(runLox("var a = \"before\";\n{ a = \"after\"; }\nprint a;"),
+            "after\n");
+}
+
+TEST(Ch8Block, NestedBlocks) {
+  EXPECT_EQ(runLox("var a = 1;\n{ var b = 2;\n  { var c = 3;\n    print a + b "
+                   "+ c; } }"),
+            "6\n");
+}
+
+TEST(Ch8Block, EmptyBlock) { EXPECT_EQ(runLox("{ }"), ""); }
+
+TEST(Ch8Block, MultipleStatements) {
+  EXPECT_EQ(runLox("{\n  var a = 1;\n  var b = 2;\n  print a + b;\n}"), "3\n");
+}
+
+// ============================================================
 // Chapter 8 — comment
 // ============================================================
 

@@ -35,10 +35,22 @@ class InterpreterTest : public ::testing::Test {
   std::string exec(std::vector<std::unique_ptr<SST::Stmt>>& stmts) {
     std::ostringstream oss;
     std::streambuf* old = std::cout.rdbuf(oss.rdbuf());
-    interp.interpret(stmts);
+    try {
+      interp.interpret(stmts);
+    } catch (...) {
+      std::cout.rdbuf(old);  // 先恢复再重新抛出
+      throw;
+    }
     std::cout.rdbuf(old);
     return oss.str();
   }
+  // std::string exec(std::vector<std::unique_ptr<SST::Stmt>>& stmts) {
+  //   std::ostringstream oss;
+  //   std::streambuf* old = std::cout.rdbuf(oss.rdbuf());
+  //   interp.interpret(stmts);
+  //   std::cout.rdbuf(old);
+  //   return oss.str();
+  // }
 };
 
 // ============================================================
@@ -374,6 +386,105 @@ TEST_F(InterpreterTest, ExpressionStatementDiscardsValue) {
   std::vector<std::unique_ptr<SST::Stmt>> stmts;
   stmts.push_back(std::make_unique<SST::Expression>(std::move(expr)));
   EXPECT_EQ(exec(stmts), "");
+}
+
+// ============================================================
+// Chapter 8: variable assignment
+// ============================================================
+
+TEST_F(InterpreterTest, AssignVariable) {
+  Lexeme::Token name = identTok("a");
+  auto init =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
+  auto newVal =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
+  auto assignExpr = std::make_unique<syntax::Assign>(name, std::move(newVal));
+  auto printExpr = std::make_unique<syntax::Variable>(name);
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
+  stmts.push_back(std::make_unique<SST::Expression>(std::move(assignExpr)));
+  stmts.push_back(std::make_unique<SST::Print>(std::move(printExpr)));
+  EXPECT_EQ(exec(stmts), "2\n");
+}
+
+TEST_F(InterpreterTest, AssignReturnsValue) {
+  Lexeme::Token name = identTok("a");
+  auto init =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
+  auto newVal =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
+  auto assignExpr = std::make_unique<syntax::Assign>(name, std::move(newVal));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
+  // print the result of the assignment expression
+  stmts.push_back(std::make_unique<SST::Print>(std::move(assignExpr)));
+  EXPECT_EQ(exec(stmts), "42\n");
+}
+
+TEST_F(InterpreterTest, AssignUndefinedThrows) {
+  Lexeme::Token name = identTok("undefined_var");
+  auto val =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
+  syntax::Assign a(name, std::move(val));
+  EXPECT_THROW(eval(&a), interpreter::InterpreterRuntimeError);
+}
+
+// ============================================================
+// Chapter 8: block scoping
+// ============================================================
+
+TEST_F(InterpreterTest, BlockBasic) {
+  auto expr =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(99.0));
+  std::vector<std::unique_ptr<SST::Stmt>> blockStmts;
+  blockStmts.push_back(std::make_unique<SST::Print>(std::move(expr)));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::Block>(std::move(blockStmts)));
+  EXPECT_EQ(exec(stmts), "99\n");
+}
+
+TEST_F(InterpreterTest, BlockScopeNotVisibleOutside) {
+  // { var a = 1; }  print a; → should throw
+  Lexeme::Token name = identTok("a");
+  auto init =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
+
+  std::vector<std::unique_ptr<SST::Stmt>> blockStmts;
+  blockStmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
+
+  auto printExpr = std::make_unique<syntax::Variable>(name);
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::Block>(std::move(blockStmts)));
+  stmts.push_back(std::make_unique<SST::Print>(std::move(printExpr)));
+
+  // The variable 'a' should not be accessible outside the block
+  EXPECT_THROW(exec(stmts), interpreter::InterpreterRuntimeError);
+}
+
+TEST_F(InterpreterTest, BlockShadowOuter) {
+  // var a = "outer"; { var a = "inner"; print a; } print a;
+  Lexeme::Token name = identTok("a");
+  auto outerInit = std::make_unique<syntax::Literal>(
+      syntax::Literal::LiteralValue(std::string("outer")));
+  auto innerInit = std::make_unique<syntax::Literal>(
+      syntax::Literal::LiteralValue(std::string("inner")));
+
+  std::vector<std::unique_ptr<SST::Stmt>> blockStmts;
+  blockStmts.push_back(std::make_unique<SST::Var>(name, std::move(innerInit)));
+  blockStmts.push_back(
+      std::make_unique<SST::Print>(std::make_unique<syntax::Variable>(name)));
+
+  auto printOuter = std::make_unique<syntax::Variable>(name);
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::Var>(name, std::move(outerInit)));
+  stmts.push_back(std::make_unique<SST::Block>(std::move(blockStmts)));
+  stmts.push_back(std::make_unique<SST::Print>(std::move(printOuter)));
+  EXPECT_EQ(exec(stmts), "inner\nouter\n");
 }
 
 int main(int argc, char** argv) {

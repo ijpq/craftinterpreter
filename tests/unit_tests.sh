@@ -29,6 +29,23 @@ if ! $BUILD_SCRIPT; then
 fi
 
 echo -e "\n${YELLOW}========================================
+生成 Java AST 代码 (GenerateAst)
+========================================${NC}"
+
+cd "$PROJECT_ROOT"
+if ! javac tool/GenerateAst.java; then
+    echo -e "${RED}GenerateAst 编译失败${NC}"
+    exit 1
+fi
+
+if ! java -cp "$PROJECT_ROOT" tool.GenerateAst "$PROJECT_ROOT/lox"; then
+    echo -e "${RED}GenerateAst 运行失败${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}AST 代码生成完成${NC}"
+
+echo -e "\n${YELLOW}========================================
 构建 Java
 ========================================${NC}"
 
