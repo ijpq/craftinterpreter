@@ -34,8 +34,9 @@ operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
 */
 /*
 expression     → assignment ;
-assignment     → IDENTIFIER "=" assignment
-               | equality ;
+assignment     → IDENTIFIER "=" assignment | logic_or;
+logic_or       → logic_and ( "or" logic_and )* ;
+logic_and      → equality ( "and" equality )* ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
@@ -43,7 +44,7 @@ factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary
                | primary ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"
-               | "(" expression ")" ;
+               | "(" expression ")" | IDENTIFIER ;
 */
 // clang-format on
 struct ParserError : std::exception {
@@ -211,19 +212,32 @@ struct Parser {
   build AST , use AST to build statement
   */
   std::unique_ptr<SST::Stmt> statement() {
+    if (match({TokenType::IF})) return ifstatement();
     if (match({TokenType::PRINT})) return printStatement();
     if (match({TokenType::LEFT_BRACE}))
       return std::make_unique<SST::Block>(block());
     return expressionStatement();
   }
+  std::unique_ptr<SST::Stmt> ifstatement() {
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
+    std::unique_ptr<Expr> condition = expression();
+    consume(Lexeme::TokenType::RIGHT_PAREN, "Expect ')' after if condition.");
+    std::unique_ptr<SST::Stmt> then = statement();
+    std::unique_ptr<SST::Stmt> elsebranch = nullptr;
+    if (match({TokenType::ELSE})) {
+      elsebranch = statement();
+    }
 
-  std::unique_ptr<SST::Print> printStatement() {
+    return std::make_unique<SST::If>(std::move(condition), std::move(then),
+                                     std::move(elsebranch));
+  }
+  std::unique_ptr<SST::Stmt> printStatement() {
     std::unique_ptr<Expr> value = expression();
     consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after value.");
     return std::make_unique<SST::Print>(std::move(value));
   }
 
-  std::unique_ptr<SST::Expression> expressionStatement() {
+  std::unique_ptr<SST::Stmt> expressionStatement() {
     std::unique_ptr<Expr> expr = expression();
     consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after expression.");
     return std::make_unique<SST::Expression>(std::move(expr));
@@ -238,9 +252,18 @@ struct Parser {
     return statements;
   }
 
+  std::unique_ptr<Expr> logical_or() {
+    std::unique_ptr<Expr> expr = logical_and();
+    while (match({TokenType::OR})) {
+      Token op = previous();
+      std::unique_ptr<Expr> right = logical_and();
+      expr = std::make_unique<syntax::Logical>(expr, op, right);
+    }
+    return expr;
+  }
+
   std::unique_ptr<Expr> assignment() {
-    std::unique_ptr<Expr> expr =
-        equality();  // expression on the left side of stmt
+    std::unique_ptr<Expr> expr = logical_or();
     if (match({TokenType::EQUAL})) {
       Token equals = previous();
       std::unique_ptr<Expr> value = assignment();
