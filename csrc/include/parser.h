@@ -85,7 +85,7 @@ struct Parser {
 
       expr = std::move(binary);
     }
-    return std::move(expr);
+    return expr;
   }
 
   std::unique_ptr<Expr> comparison() {
@@ -98,7 +98,7 @@ struct Parser {
           std::make_unique<Binary>(std::move(expr), op, std::move(right));
       expr = std::move(binary);
     }
-    return std::move(expr);
+    return expr;
   }
 
   std::unique_ptr<Expr> term() {
@@ -110,7 +110,7 @@ struct Parser {
           std::make_unique<Binary>(std::move(expr), op, std::move(right));
       expr = std::move(binary);
     }
-    return std::move(expr);
+    return expr;
   }
 
   std::unique_ptr<Expr> factor() {
@@ -122,7 +122,7 @@ struct Parser {
           std::make_unique<Binary>(std::move(expr), op, std::move(right));
       expr = std::move(binary);
     }
-    return std::move(expr);
+    return expr;
   }
 
   std::unique_ptr<Expr> unary() {
@@ -133,7 +133,7 @@ struct Parser {
       return std::move(unary);
     } else {
       auto expr = primary();
-      return std::move(expr);
+      return expr;
     }
   }
 
