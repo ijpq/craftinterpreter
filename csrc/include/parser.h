@@ -270,14 +270,11 @@ struct Parser {
   }
 
   std::unique_ptr<Stmt> whileStatement() {
-    if (match({TokenType{Lexeme::TokenType::WHILE}})) {
-      consume(TokenType::LEFT_PAREN, "Expect '(' after while.");
-      std::unique_ptr<Expr> condition = expression();
-      consume(TokenType::RIGHT_PAREN, "Expect ')' after while condition.");
-      std::unique_ptr<Stmt> body = statement();
-      return std::make_unique<SST::While>(std::move(condition),
-                                          std::move(body));
-    }
+    consume(TokenType::LEFT_PAREN, "Expect '(' after while.");
+    std::unique_ptr<Expr> condition = expression();
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after while condition.");
+    std::unique_ptr<Stmt> body = statement();
+    return std::make_unique<SST::While>(std::move(condition), std::move(body));
   }
 
   std::unique_ptr<SST::Stmt> ifstatement() {

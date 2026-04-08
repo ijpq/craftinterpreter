@@ -181,8 +181,7 @@ is interpreter, it defined methods that calculate value from AST
   }
 
   SST::StmtVisitorType visitWhileStmt(SST::While* stmt) override {
-    auto cond_val = evaluate(stmt->condition.get());
-    if (isTruthy(cond_val)) {
+    while (isTruthy(evaluate(stmt->condition.get()))) {
       execute(stmt->body.get());
     }
   }

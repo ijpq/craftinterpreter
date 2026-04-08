@@ -418,6 +418,99 @@ TEST(Ch9Consistency, IfWithBlock) {
 }
 
 // ============================================================
+// Chapter 9 — while statement
+// ============================================================
+
+TEST(Ch9While, BasicWhile) {
+  EXPECT_EQ(runLox("var i = 0;\nwhile (i < 3) { print i; i = i + 1; }"),
+            "0\n1\n2\n");
+}
+
+TEST(Ch9While, WhileFalseNoExec) {
+  EXPECT_EQ(runLox("while (false) { print 1; }"), "");
+}
+
+TEST(Ch9While, WhileCountdown) {
+  EXPECT_EQ(runLox("var i = 3;\nwhile (i > 0) { print i; i = i - 1; }"),
+            "3\n2\n1\n");
+}
+
+TEST(Ch9While, WhileAccumulate) {
+  EXPECT_EQ(runLox("var sum = 0;\nvar i = 1;\n"
+                   "while (i <= 5) { sum = sum + i; i = i + 1; }\nprint sum;"),
+            "15\n");
+}
+
+// ============================================================
+// Chapter 9 — for statement
+// ============================================================
+
+TEST(Ch9For, BasicFor) {
+  EXPECT_EQ(runLox("for (var i = 0; i < 3; i = i + 1) print i;"), "0\n1\n2\n");
+}
+
+TEST(Ch9For, ForNoInit) {
+  EXPECT_EQ(runLox("var i = 0;\nfor (; i < 3; i = i + 1) print i;"),
+            "0\n1\n2\n");
+}
+
+TEST(Ch9For, ForNoIncrement) {
+  EXPECT_EQ(runLox("for (var i = 0; i < 3;) { print i; i = i + 1; }"),
+            "0\n1\n2\n");
+}
+
+TEST(Ch9For, ForAccumulate) {
+  EXPECT_EQ(
+      runLox("var sum = 0;\n"
+             "for (var i = 1; i <= 10; i = i + 1) sum = sum + i;\nprint sum;"),
+      "55\n");
+}
+
+TEST(Ch9For, ForFibonacci) {
+  std::string src =
+      "var a = 0;\n"
+      "var temp;\n"
+      "for (var b = 1; a < 10000; b = temp + b) {\n"
+      "  print a;\n"
+      "  temp = a;\n"
+      "  a = b;\n"
+      "}";
+  EXPECT_EQ(runLox(src),
+            "0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n55\n89\n144\n233\n377\n610\n"
+            "987\n1597\n2584\n4181\n6765\n");
+}
+
+// ============================================================
+// Chapter 9 — Java vs C++ consistency (while / for)
+// ============================================================
+
+TEST(Ch9Consistency, WhileBasic) {
+  expectConsistent("var i = 0;\nwhile (i < 3) { print i; i = i + 1; }");
+}
+
+TEST(Ch9Consistency, WhileAccumulate) {
+  expectConsistent(
+      "var sum = 0;\nvar i = 1;\n"
+      "while (i <= 5) { sum = sum + i; i = i + 1; }\nprint sum;");
+}
+
+TEST(Ch9Consistency, ForBasic) {
+  expectConsistent("for (var i = 0; i < 3; i = i + 1) print i;");
+}
+
+TEST(Ch9Consistency, ForFibonacci) {
+  std::string src =
+      "var a = 0;\n"
+      "var temp;\n"
+      "for (var b = 1; a < 10000; b = temp + b) {\n"
+      "  print a;\n"
+      "  temp = a;\n"
+      "  a = b;\n"
+      "}";
+  expectConsistent(src);
+}
+
+// ============================================================
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
