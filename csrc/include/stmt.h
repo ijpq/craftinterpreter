@@ -15,7 +15,11 @@ primary        → "true" | "false" | "nil"
                | NUMBER | STRING
                | "(" expression ")"
                | IDENTIFIER ;
-statement      → exprStmt | ifStmt| printStmt | whileStmt | block ;
+statement      → exprStmt | forStmt | ifStmt| printStmt | whileStmt | block ;
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+                 expression? ";"
+                 expression? ")" statement ;
+
 whileStmt      → "while" "(" expression ")" statement ;
 ifStmt         → "if" "(" expression ")" statement
                ( "else" statement )? ;

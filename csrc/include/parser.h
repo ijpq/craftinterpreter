@@ -6,7 +6,9 @@
 #include <vector>
 
 #include "expr.h"
+// #include "gtest/gtest.h"
 #include "lox.h"
+#include "loxvalue.h"
 #include "stmt.h"
 #include "token.h"
 #include "tokentype.h"
@@ -214,11 +216,57 @@ struct Parser {
   */
   std::unique_ptr<SST::Stmt> statement() {
     if (match({TokenType::IF})) return ifstatement();
+    if (match({TokenType::FOR})) return forstatement();
     if (match({TokenType::PRINT})) return printStatement();
     if (match({TokenType::WHILE})) return whileStatement();
     if (match({TokenType::LEFT_BRACE}))
       return std::make_unique<SST::Block>(block());
     return expressionStatement();
+  }
+
+  std::unique_ptr<Stmt> forstatement() {
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'for'.");
+    std::unique_ptr<Stmt> initializer;
+    if (match({TokenType::SEMICOLON})) {
+      initializer = nullptr;
+    } else if (match({TokenType::VAR})) {
+      initializer = varDeclaration();
+    } else {
+      initializer = expressionStatement();
+    }
+
+    std::unique_ptr<Expr> cond;
+    if (tokens[current].type != TokenType::SEMICOLON) {
+      cond = expression();
+    }
+    consume(TokenType::SEMICOLON, "Expect ';' after loop condition.");
+
+    std::unique_ptr<Expr> increment;
+    if (tokens[current].type != TokenType::RIGHT_PAREN) {
+      increment = expression();
+    }
+
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    std::unique_ptr<Stmt> body = statement();
+    if (increment != nullptr) {
+      std::vector<std::unique_ptr<Stmt>> combine_body_incre;
+      combine_body_incre.push_back(std::move(body));
+      combine_body_incre.push_back(
+          std::move(std::make_unique<SST::Expression>(std::move(increment))));
+      body = std::make_unique<SST::Block>(std::move(combine_body_incre));
+    }
+    if (cond == nullptr) {
+      cond = std::make_unique<Literal>(Literal::LiteralValue{true});
+    }
+    body = std::make_unique<SST::While>(std::move(cond), std::move(body));
+    if (initializer != nullptr) {
+      std::vector<std::unique_ptr<Stmt>> combine_init_body_incre;
+      combine_init_body_incre.push_back(std::move(initializer));
+      combine_init_body_incre.push_back(std::move(body));
+      body = std::make_unique<SST::Block>(std::move(combine_init_body_incre));
+    }
+    return body;
   }
 
   std::unique_ptr<Stmt> whileStatement() {
