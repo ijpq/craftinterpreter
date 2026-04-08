@@ -179,6 +179,13 @@ is interpreter, it defined methods that calculate value from AST
     else if (stmt->elsebranch != nullptr)
       execute(stmt->elsebranch.get());
   }
+
+  SST::StmtVisitorType visitWhileStmt(SST::While* stmt) override {
+    auto cond_val = evaluate(stmt->condition.get());
+    if (isTruthy(cond_val)) {
+      execute(stmt->body.get());
+    }
+  }
 };
 
 }  // namespace interpreter

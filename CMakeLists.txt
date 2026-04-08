@@ -111,6 +111,7 @@ add_executable(lox_integration_test
 )
 target_compile_definitions(lox_integration_test PRIVATE
     LOX_BINARY="$<TARGET_FILE:craftinginterpreter>"
+    LOX_JAVA_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_link_libraries(lox_integration_test
     GTest::gtest

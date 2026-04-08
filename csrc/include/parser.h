@@ -15,6 +15,7 @@ using namespace Lexeme;
 using namespace syntax;
 using Lexeme::Token;
 using Lexeme::TokenType;
+using SST::Stmt;
 using syntax::Binary;
 using syntax::Expr;
 namespace syntax {
@@ -214,10 +215,23 @@ struct Parser {
   std::unique_ptr<SST::Stmt> statement() {
     if (match({TokenType::IF})) return ifstatement();
     if (match({TokenType::PRINT})) return printStatement();
+    if (match({TokenType::WHILE})) return whileStatement();
     if (match({TokenType::LEFT_BRACE}))
       return std::make_unique<SST::Block>(block());
     return expressionStatement();
   }
+
+  std::unique_ptr<Stmt> whileStatement() {
+    if (match({TokenType{Lexeme::TokenType::WHILE}})) {
+      consume(TokenType::LEFT_PAREN, "Expect '(' after while.");
+      std::unique_ptr<Expr> condition = expression();
+      consume(TokenType::RIGHT_PAREN, "Expect ')' after while condition.");
+      std::unique_ptr<Stmt> body = statement();
+      return std::make_unique<SST::While>(std::move(condition),
+                                          std::move(body));
+    }
+  }
+
   std::unique_ptr<SST::Stmt> ifstatement() {
     consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
     std::unique_ptr<Expr> condition = expression();
@@ -231,6 +245,7 @@ struct Parser {
     return std::make_unique<SST::If>(std::move(condition), std::move(then),
                                      std::move(elsebranch));
   }
+
   std::unique_ptr<SST::Stmt> printStatement() {
     std::unique_ptr<Expr> value = expression();
     consume(Lexeme::TokenType::SEMICOLON, "Expect ';' after value.");
@@ -255,8 +270,8 @@ struct Parser {
   std::unique_ptr<Expr> logical_and() {
     std::unique_ptr<Expr> expr = equality();
     while (match({TokenType::AND})) {
-      std::unique_ptr<Expr> right = equality();
       Token op = previous();
+      std::unique_ptr<Expr> right = equality();
       expr = std::make_unique<syntax::Logical>(std::move(expr), op,
                                                std::move(right));
     }

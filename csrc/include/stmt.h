@@ -2,7 +2,7 @@
 
 #include "expr.h"
 namespace SST {
-
+using syntax::Expr;
 // clang-format off
 /*
 
@@ -15,7 +15,8 @@ primary        → "true" | "false" | "nil"
                | NUMBER | STRING
                | "(" expression ")"
                | IDENTIFIER ;
-statement      → exprStmt | ifStmt| printStmt | block ;
+statement      → exprStmt | ifStmt| printStmt | whileStmt | block ;
+whileStmt      → "while" "(" expression ")" statement ;
 ifStmt         → "if" "(" expression ")" statement
                ( "else" statement )? ;
 block          → "{" declaration* "}" ;
@@ -29,6 +30,7 @@ class Var;
 using StmtVisitorType = void;
 class Block;
 class If;
+class While;
 
 /*
 hold AST as member var, provide accept() to interpreter
@@ -44,7 +46,7 @@ struct Stmt {  // statement
     virtual R visitPrintStmt(Print* stmt) = 0;
     // virtual R visitReturnStmt(Return* stmt) = 0;
     virtual R visitVarStmt(Var* stmt) = 0;
-    // virtual R visitWhileStmt(While* stmt) = 0;
+    virtual R visitWhileStmt(While* stmt) = 0;
     ~Visitor() = default;
   };
 
@@ -108,5 +110,16 @@ struct If : Stmt {
   std::unique_ptr<syntax::Expr> condition;
   std::unique_ptr<SST::Stmt> then;
   std::unique_ptr<SST::Stmt> elsebranch;
+};
+
+struct While : Stmt {
+  While(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body)
+      : body(std::move(body)), condition(std::move(condition)) {}
+
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
+    return visitor->visitWhileStmt(this);
+  }
+  std::unique_ptr<Expr> condition;
+  std::unique_ptr<Stmt> body;
 };
 }  // namespace SST

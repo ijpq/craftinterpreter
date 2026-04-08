@@ -315,6 +315,109 @@ TEST(Ch8Misc, InlineComment) {
 }
 
 // ============================================================
+// Java vs C++ consistency helpers
+// ============================================================
+
+#ifndef LOX_JAVA_DIR
+#error "LOX_JAVA_DIR must be defined via CMake compile definitions"
+#endif
+
+// Run lox source string through the Java interpreter, capture stdout+stderr
+static std::string runJava(const std::string& source) {
+  char tmpfile[] = "/tmp/lox_java_test_XXXXXX.lox";
+  int fd = mkstemps(tmpfile, 4);
+  if (fd < 0) return "[mkstemp failed]";
+  write(fd, source.c_str(), source.size());
+  close(fd);
+
+  std::string cmd = "cd " + std::string(LOX_JAVA_DIR) + " && java -cp " +
+                    std::string(LOX_JAVA_DIR) + " lox.Lox " + tmpfile + " 2>&1";
+
+  FILE* pipe = popen(cmd.c_str(), "r");
+  std::string result;
+  if (pipe) {
+    char buf[512];
+    while (fgets(buf, sizeof(buf), pipe)) result += buf;
+    pclose(pipe);
+  }
+  unlink(tmpfile);
+  return result;
+}
+
+// Compare Java and C++ output for the same lox source
+static void expectConsistent(const std::string& source) {
+  std::string javaOut = runJava(source);
+  std::string cppOut = runLox(source);
+  EXPECT_EQ(javaOut, cppOut) << "Source: " << source << "\nJava:   " << javaOut
+                             << "\nC++:    " << cppOut;
+}
+
+// ============================================================
+// Chapter 9 — Java vs C++ consistency
+// ============================================================
+
+TEST(Ch9Consistency, IfTrue) { expectConsistent("if (true) print 1;"); }
+
+TEST(Ch9Consistency, IfFalse) { expectConsistent("if (false) print 1;"); }
+
+TEST(Ch9Consistency, IfElseTrue) {
+  expectConsistent("if (true) print 1; else print 2;");
+}
+
+TEST(Ch9Consistency, IfElseFalse) {
+  expectConsistent("if (false) print 1; else print 2;");
+}
+
+TEST(Ch9Consistency, IfNilFalsy) {
+  expectConsistent("if (nil) print 1; else print 2;");
+}
+
+TEST(Ch9Consistency, IfZeroTruthy) {
+  // 0 is truthy in Lox
+  expectConsistent("if (0) print 1; else print 2;");
+}
+
+TEST(Ch9Consistency, LogicalOrTrue) {
+  expectConsistent("print true or false;");
+}
+
+TEST(Ch9Consistency, LogicalOrFalse) {
+  expectConsistent("print false or false;");
+}
+
+TEST(Ch9Consistency, LogicalAndTrue) {
+  expectConsistent("print true and true;");
+}
+
+TEST(Ch9Consistency, LogicalAndFalse) {
+  expectConsistent("print false and true;");
+}
+
+TEST(Ch9Consistency, LogicalOrReturnsValue) {
+  // or returns the actual operand value, not a bool
+  expectConsistent("print 1 or 2;");
+}
+
+TEST(Ch9Consistency, LogicalAndReturnsValue) {
+  expectConsistent("print 1 and 2;");
+}
+
+TEST(Ch9Consistency, LogicalShortCircuitOr) {
+  // left side truthy: right side not evaluated
+  expectConsistent("var a = 0; true or (a = 1); print a;");
+}
+
+TEST(Ch9Consistency, LogicalShortCircuitAnd) {
+  // left side falsy: right side not evaluated
+  expectConsistent("var a = 0; false and (a = 1); print a;");
+}
+
+TEST(Ch9Consistency, IfWithBlock) {
+  expectConsistent(
+      "var a = 1;\nif (a == 1) { print \"yes\"; } else { print \"no\"; }");
+}
+
+// ============================================================
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
