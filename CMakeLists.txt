@@ -7,9 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# add_compile_options(-fsanitize=address -g)
-# add_link_options(-fsanitize=address)
-
 # ccache 支持
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)

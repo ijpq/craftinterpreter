@@ -252,12 +252,24 @@ struct Parser {
     return statements;
   }
 
+  std::unique_ptr<Expr> logical_and() {
+    std::unique_ptr<Expr> expr = equality();
+    while (match({TokenType::AND})) {
+      std::unique_ptr<Expr> right = equality();
+      Token op = previous();
+      expr = std::make_unique<syntax::Logical>(std::move(expr), op,
+                                               std::move(right));
+    }
+    return expr;
+  }
+
   std::unique_ptr<Expr> logical_or() {
     std::unique_ptr<Expr> expr = logical_and();
     while (match({TokenType::OR})) {
-      Token op = previous();
+      Token op = previous();  // "or" keyword
       std::unique_ptr<Expr> right = logical_and();
-      expr = std::make_unique<syntax::Logical>(expr, op, right);
+      expr = std::make_unique<syntax::Logical>(std::move(expr), op,
+                                               std::move(right));
     }
     return expr;
   }

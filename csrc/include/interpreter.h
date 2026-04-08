@@ -33,8 +33,21 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     return evaluate(expr->expression.get());
   }
 
+  LoxValueType visitLogicalExpr(syntax::Logical* expr) override {
+    auto left_val = evaluate(expr->left.get());
+    if (expr->op.type == Lexeme::TokenType::AND) {
+      if (!isTruthy(left_val)) return left_val;
+    } else if (expr->op.type == Lexeme::TokenType::OR) {
+      if (isTruthy(left_val)) return left_val;
+    }
+
+    return evaluate(expr->right.get());
+  }
+
+  // evaluate is for expression, create value
   LoxValueType evaluate(syntax::Expr* expr) { return expr->accept(this); }
 
+  // execute is for statement, create side-effect
   void execute(SST::Stmt* stmt) { stmt->accept(this); }
 
   void executeBlock(std::vector<std::unique_ptr<SST::Stmt>>&& statements) {
@@ -157,6 +170,14 @@ is interpreter, it defined methods that calculate value from AST
 
   SST::StmtVisitorType visitBlockStmt(SST::Block* stmt) override {
     executeBlock(std::move(stmt->statements));
+  }
+
+  SST::StmtVisitorType visitIfStmt(SST::If* stmt) override {
+    auto cond_val = evaluate(stmt->condition.get());
+    if (isTruthy(cond_val))
+      execute(stmt->then.get());
+    else if (stmt->elsebranch != nullptr)
+      execute(stmt->elsebranch.get());
   }
 };
 

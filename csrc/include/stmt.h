@@ -1,8 +1,6 @@
 #pragma once
-#include <variant>
 
 #include "expr.h"
-#include "tokentype.h"
 namespace SST {
 
 // clang-format off
@@ -17,7 +15,9 @@ primary        → "true" | "false" | "nil"
                | NUMBER | STRING
                | "(" expression ")"
                | IDENTIFIER ;
-statement      → exprStmt | printStmt | block ;
+statement      → exprStmt | ifStmt| printStmt | block ;
+ifStmt         → "if" "(" expression ")" statement
+               ( "else" statement )? ;
 block          → "{" declaration* "}" ;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
@@ -28,6 +28,7 @@ class Print;
 class Var;
 using StmtVisitorType = void;
 class Block;
+class If;
 
 /*
 hold AST as member var, provide accept() to interpreter
@@ -39,7 +40,7 @@ struct Stmt {  // statement
     // virtual R visitClassStmt(Class* stmt) = 0;
     virtual R visitExpressionStmt(Expression* stmt) = 0;
     // virtual R visitFunctionStmt(Function* stmt) = 0;
-    // virtual R visitIfStmt(If* stmt) = 0;
+    virtual R visitIfStmt(If* stmt) = 0;
     virtual R visitPrintStmt(Print* stmt) = 0;
     // virtual R visitReturnStmt(Return* stmt) = 0;
     virtual R visitVarStmt(Var* stmt) = 0;
@@ -93,5 +94,19 @@ struct Block : Stmt {
     return visitor->visitBlockStmt(this);
   }
   std::vector<std::unique_ptr<Stmt>> statements;
+};
+
+struct If : Stmt {
+  If(std::unique_ptr<syntax::Expr> condition, std::unique_ptr<SST::Stmt> then,
+     std::unique_ptr<SST::Stmt> elsebranch)
+      : condition(std::move(condition)),
+        then(std::move(then)),
+        elsebranch(std::move(elsebranch)) {}
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
+    return visitor->visitIfStmt(this);
+  }
+  std::unique_ptr<syntax::Expr> condition;
+  std::unique_ptr<SST::Stmt> then;
+  std::unique_ptr<SST::Stmt> elsebranch;
 };
 }  // namespace SST

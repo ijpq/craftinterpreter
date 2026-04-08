@@ -15,6 +15,7 @@ using Lexeme::Token;
 class Expr;
 class Variable;
 class Assign;
+class Logical;
 
 struct Visitor {
   using ReturnType = LoxValueType;
@@ -26,20 +27,22 @@ struct Visitor {
   virtual ReturnType visitUnaryExpr(Unary* expr) = 0;
   virtual ReturnType visitVariableExpr(Variable* expr) = 0;
   virtual ReturnType visitAssignExpr(Assign* expr) = 0;
+  virtual ReturnType visitLogicalExpr(Logical* expr) = 0;
 
   ~Visitor() = default;
 };
 
 struct ASTPrinter : Visitor {
   // using raw ptr since we only take a look at this classes.
-  ReturnType visitBinaryExpr(Binary* expr);
-  ReturnType visitGroupingExpr(Grouping* expr);
-  ReturnType visitLiteralExpr(Literal* expr);
-  ReturnType visitUnaryExpr(Unary* expr);
+  ReturnType visitBinaryExpr(Binary* expr) override;
+  ReturnType visitGroupingExpr(Grouping* expr) override;
+  ReturnType visitLiteralExpr(Literal* expr) override;
+  ReturnType visitUnaryExpr(Unary* expr) override;
   ReturnType prefix_expr(std::string name, std::initializer_list<Expr*> exprs);
   std::string print(Expr* expr);
-  ReturnType visitVariableExpr(syntax::Variable* expr) {}
-  ReturnType visitAssignExpr(syntax::Assign* expr) {}
+  ReturnType visitVariableExpr(syntax::Variable* expr) override {}
+  ReturnType visitAssignExpr(syntax::Assign* expr) override {}
+  ReturnType visitLogicalExpr(syntax::Logical* expr) override {}
 };
 
 struct Expr {
@@ -120,6 +123,18 @@ struct Assign : Expr {
   }
   Token name;
   std::unique_ptr<Expr> value;
+};
+
+struct Logical : Expr {
+  Logical(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right)
+      : left(std::move(left)), right(std::move(right)), op(op) {}
+
+  ReturnType accept(Visitor* visitor) override {
+    return visitor->visitLogicalExpr(this);
+  }
+
+  std::unique_ptr<Expr> left, right;
+  Token op;
 };
 
 std::string stringify(Visitor::ReturnType obj);

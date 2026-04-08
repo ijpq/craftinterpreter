@@ -487,6 +487,180 @@ TEST_F(InterpreterTest, BlockShadowOuter) {
   EXPECT_EQ(exec(stmts), "inner\nouter\n");
 }
 
+// ============================================================
+// Chapter 9: if statement
+// ============================================================
+
+TEST_F(InterpreterTest, IfTrueBranch) {
+  // if (true) print 1;
+  auto cond =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto thenStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(
+      std::make_unique<SST::If>(std::move(cond), std::move(thenStmt), nullptr));
+  EXPECT_EQ(exec(stmts), "1\n");
+}
+
+TEST_F(InterpreterTest, IfFalseBranchSkipped) {
+  // if (false) print 1;  → no output
+  auto cond =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto thenStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(
+      std::make_unique<SST::If>(std::move(cond), std::move(thenStmt), nullptr));
+  EXPECT_EQ(exec(stmts), "");
+}
+
+TEST_F(InterpreterTest, IfElseTrueBranch) {
+  // if (true) print 1; else print 2;
+  auto cond =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto thenStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
+  auto elseStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0)));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::If>(
+      std::move(cond), std::move(thenStmt), std::move(elseStmt)));
+  EXPECT_EQ(exec(stmts), "1\n");
+}
+
+TEST_F(InterpreterTest, IfElseFalseBranch) {
+  // if (false) print 1; else print 2;
+  auto cond =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto thenStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
+  auto elseStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0)));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::If>(
+      std::move(cond), std::move(thenStmt), std::move(elseStmt)));
+  EXPECT_EQ(exec(stmts), "2\n");
+}
+
+TEST_F(InterpreterTest, IfNilIsFalsy) {
+  // if (nil) print 1; else print 2;
+  auto cond = std::make_unique<syntax::Literal>(
+      syntax::Literal::LiteralValue(std::monostate{}));
+  auto thenStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
+  auto elseStmt = std::make_unique<SST::Print>(
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0)));
+
+  std::vector<std::unique_ptr<SST::Stmt>> stmts;
+  stmts.push_back(std::make_unique<SST::If>(
+      std::move(cond), std::move(thenStmt), std::move(elseStmt)));
+  EXPECT_EQ(exec(stmts), "2\n");
+}
+
+// ============================================================
+// Chapter 9: logical operators (and / or)
+// ============================================================
+
+static Lexeme::Token logicalTok(Lexeme::TokenType t, const std::string& lex) {
+  return Lexeme::Token(t, lex, std::monostate{}, 1);
+}
+
+TEST_F(InterpreterTest, LogicalOrTrueShortCircuit) {
+  // true or false → true（短路，右侧不执行）
+  auto left =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto orExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
+      std::move(right));
+  LoxValueType result = eval(orExpr.get());
+  EXPECT_TRUE(result.get<bool>());
+}
+
+TEST_F(InterpreterTest, LogicalOrFalseEvaluatesRight) {
+  // false or true → true
+  auto left =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto orExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
+      std::move(right));
+  LoxValueType result = eval(orExpr.get());
+  EXPECT_TRUE(result.get<bool>());
+}
+
+TEST_F(InterpreterTest, LogicalOrBothFalse) {
+  // false or false → false
+  auto left =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto orExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
+      std::move(right));
+  LoxValueType result = eval(orExpr.get());
+  EXPECT_FALSE(result.get<bool>());
+}
+
+TEST_F(InterpreterTest, LogicalAndBothTrue) {
+  // true and true → true
+  auto left =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto andExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::AND, "and"),
+      std::move(right));
+  LoxValueType result = eval(andExpr.get());
+  EXPECT_TRUE(result.get<bool>());
+}
+
+TEST_F(InterpreterTest, LogicalAndFalseShortCircuit) {
+  // false and true → false（短路）
+  auto left =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
+  auto andExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::AND, "and"),
+      std::move(right));
+  LoxValueType result = eval(andExpr.get());
+  EXPECT_FALSE(result.get<bool>());
+}
+
+TEST_F(InterpreterTest, LogicalAndReturnsRightValue) {
+  // 1 and 2 → 2（左侧 truthy，返回右侧值）
+  auto left =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
+  auto andExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::AND, "and"),
+      std::move(right));
+  LoxValueType result = eval(andExpr.get());
+  EXPECT_DOUBLE_EQ(result.get<double>(), 2.0);
+}
+
+TEST_F(InterpreterTest, LogicalOrReturnsLeftValue) {
+  // "hello" or 2 → "hello"（左侧 truthy，短路返回左侧）
+  auto left = std::make_unique<syntax::Literal>(
+      syntax::Literal::LiteralValue(std::string("hello")));
+  auto right =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
+  auto orExpr = std::make_unique<syntax::Logical>(
+      std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
+      std::move(right));
+  LoxValueType result = eval(orExpr.get());
+  EXPECT_EQ(result.get<std::string>(), "hello");
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
