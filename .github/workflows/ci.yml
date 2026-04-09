@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  # ============================================================
+  # Job 1: clang-format check
+  # ============================================================
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: Check formatting
+        run: |
+          find csrc -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror
+
+  # ============================================================
+  # Job 2: Build + Test on Ubuntu
+  # ============================================================
+  test-ubuntu:
+    name: Build & Test (Ubuntu)
+    runs-on: ubuntu-latest
+    needs: format
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ default-jdk
+
+      - name: Build C++
+        run: bash build_ubuntu.sh
+
+      - name: Generate Java AST
+        run: |
+          javac tool/GenerateAst.java
+          java -cp . tool.GenerateAst lox
+
+      - name: Build Java
+        run: |
+          cd lox
+          javac *.java
+
+      - name: Run Java Ground Truth Tests
+        run: java -cp . lox.InterpreterTest
+
+      - name: Run C++ Unit Tests
+        run: |
+          cd build
+          LD_LIBRARY_PATH=. ./interpreter_test
+
+      - name: Run Integration Tests (C++ vs Java consistency)
+        run: |
+          cd build
+          LD_LIBRARY_PATH=. ./lox_integration_test
+
+  # ============================================================
+  # Job 3: Build + Test on macOS
+  # ============================================================
+  test-macos:
+    name: Build & Test (macOS)
+    runs-on: macos-latest
+    needs: format
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake gcc
+          # java is pre-installed on macos-latest runners
+
+      - name: Build C++
+        run: |
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_RPATH_USE_ORIGIN=ON \
+            -DBUILD_SHARED_LIBS=ON
+          cmake --build .
+
+      - name: Generate Java AST
+        run: |
+          javac tool/GenerateAst.java
+          java -cp . tool.GenerateAst lox
+
+      - name: Build Java
+        run: |
+          cd lox
+          javac *.java
+
+      - name: Run Java Ground Truth Tests
+        run: java -cp . lox.InterpreterTest
+
+      - name: Run C++ Unit Tests
+        run: |
+          cd build
+          DYLD_LIBRARY_PATH=. ./interpreter_test
+
+      - name: Run Integration Tests (C++ vs Java consistency)
+        run: |
+          cd build
+          DYLD_LIBRARY_PATH=. ./lox_integration_test
