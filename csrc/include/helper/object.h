@@ -60,6 +60,12 @@ struct Object {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
   }
 
+  // arbitary converting ctor
+  template<typename ...T>
+  Object(const std::variant<T...>& rhs) {
+    constexpr_get_update(std::index_sequence_for<T...>{}, rhs);
+  }
+
   template <size_t... I>
   bool isEqual(std::index_sequence<I...> _, Object& rhs) {
     // using T = std::tuple_element_t<I, std::tuple<Ts...>>;

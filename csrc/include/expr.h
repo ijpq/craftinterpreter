@@ -16,6 +16,7 @@ class Expr;
 class Variable;
 class Assign;
 class Logical;
+class Call;
 
 struct Visitor {
   using ReturnType = LoxValueType;
@@ -28,6 +29,7 @@ struct Visitor {
   virtual ReturnType visitVariableExpr(Variable* expr) = 0;
   virtual ReturnType visitAssignExpr(Assign* expr) = 0;
   virtual ReturnType visitLogicalExpr(Logical* expr) = 0;
+  virtual ReturnType visitCallExpr(Call* expr) = 0;
 
   ~Visitor() = default;
 };
@@ -43,6 +45,7 @@ struct ASTPrinter : Visitor {
   ReturnType visitVariableExpr(syntax::Variable* expr) override {}
   ReturnType visitAssignExpr(syntax::Assign* expr) override {}
   ReturnType visitLogicalExpr(syntax::Logical* expr) override {}
+  ReturnType visitCallExpr(Call* expr) override {}
 };
 
 struct Expr {
@@ -135,6 +138,17 @@ struct Logical : Expr {
 
   std::unique_ptr<Expr> left, right;
   Token op;
+};
+
+struct Call : Expr {
+  Call(std::unique_ptr<Expr> callee, Token paren, std::vector<std::unique_ptr<Expr>> arguments)
+  : callee(std::move(callee)), paren(paren), arguments(std::move(arguments)) {}
+  ReturnType accept(Visitor* visitor) override {
+    return visitor->visitCallExpr(this);
+  }
+  std::unique_ptr<Expr> callee;
+  Token paren;
+  std::vector<std::unique_ptr<Expr>> arguments;
 };
 
 std::string stringify(Visitor::ReturnType obj);

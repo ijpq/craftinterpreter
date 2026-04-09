@@ -8,8 +8,11 @@ using syntax::Expr;
 
 program        → statement* EOF ;
 
-declaration    → varDecl
+declaration    → funDecl
+               | varDecl
                | statement ;
+funDecl        → "fun" function ;
+function       → IDENTIFIER "(" parameters? ")" block ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 primary        → "true" | "false" | "nil"
                | NUMBER | STRING

@@ -21,6 +21,8 @@ using SST::Stmt;
 using syntax::Binary;
 using syntax::Expr;
 namespace syntax {
+
+using ArgumentsType = std::vector<std::unique_ptr<Expr>>;
 // clang-format off
 /*
 expression     → literal
@@ -45,7 +47,9 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary
-               | primary ;
+               | call ;
+call           → primary ( "(" arguments? ")" )* ;
+arguments      → expression ( "," expression )* ;
 primary        → NUMBER | STRING | "true" | "false" | "nil"
                | "(" expression ")" | IDENTIFIER ;
 */
@@ -129,6 +133,51 @@ struct Parser {
     return expr;
   }
 
+  ArgumentsType arguments() {
+    ArgumentsType args;
+    std::unique_ptr<Expr> expr = expression();
+    args.push_back(std::move(expr));
+    while (match({TokenType::COMMA})) {
+      std::unique_ptr<Expr> next_arg = expression();
+      args.push_back(next_arg);
+    }
+    return std::move(args);
+  }
+
+  std::unique_ptr<Expr> finishcall(std::unique_ptr<Expr> callee) {
+    ArgumentsType args;
+    if (peek().type != TokenType::RIGHT_PAREN) { // have arguments
+      args = arguments();
+      consume(TokenType::RIGHT_PAREN, "!");
+      Token right_paren = previous();
+      return std::make_unique<syntax::Call>(std::move(callee), right_paren, std::move(args));
+    } else { // empty arguments
+      consume(TokenType::RIGHT_PAREN, "!");
+      Token right_paren = previous();
+      return std::make_unique<syntax::Call>(std::move(callee), right_paren, ArgumentsType{});
+    }
+  }
+
+  /*
+  call() wraps linked invocation into embedded Call object.
+  f(args1...)(args2...)...
+  = Call(f, ')', args1...)(args2...)...
+  = Call(Call(f, ')', args1...), ')', ...)...
+  */
+
+  std::unique_ptr<Expr> call() {
+    std::unique_ptr<Expr> callee = primary();
+    ArgumentsType args;
+    while (1) {
+      if (match({TokenType::LEFT_PAREN})) {
+        callee = finishcall(std::move(callee));
+      } else {
+        break;
+      }
+    }
+    return callee;
+  }
+
   std::unique_ptr<Expr> unary() {
     if (match({TokenType::BANG, TokenType::MINUS})) {
       Token op = previous();
@@ -136,7 +185,7 @@ struct Parser {
       auto unary = std::make_unique<Unary>(std::move(op), std::move(right));
       return std::move(unary);
     } else {
-      auto expr = primary();
+      auto expr = call();
       return expr;
     }
   }

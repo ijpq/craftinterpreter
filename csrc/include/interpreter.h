@@ -9,6 +9,7 @@
 #include "expr.h"
 #include "helper/guard.h"
 #include "helper/object.h"
+#include "loxfunction.h"
 #include "loxvalue.h"
 #include "runtimeerror.h"
 #include "stmt.h"
@@ -21,6 +22,20 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   interpreter class act as visitor to AST, and compute each tree's value
   */
   Environment env;
+  Environment* current_env = &env;
+
+  // class ClockCallable : LoxCallable {
+  //   template <typename T>
+  //   ClockCallable(T t) : callable(t) {}
+  //   std::function<LoxValueType(const std::vector<LoxValueType>&)> callable;
+
+  //   LoxValueType call(interpreter::Interpreter* interpreter,
+  //                     const std::vector<LoxValueType>& args) override {
+  //     callable(args);
+  //   }
+  // };
+  Interpreter();
+
   void interpret(syntax::Expr* expr);
 
   void interpret(std::vector<std::unique_ptr<SST::Stmt>>& statements);
@@ -61,6 +76,33 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     LoxValueType value = evaluate(expr->value.get());
     env.assign(expr->name, value);
     return value;
+  }
+
+  /*
+  f(args1...)(args2...)...
+  = Call(f, ')', args1...)(args2...)...
+  = Call(Call(f, ')', args1...), ')', ...)...
+  */
+  LoxValueType visitCallExpr(syntax::Call* expr) override {
+    auto func = evaluate(expr->callee.get());
+
+    std::vector<LoxValueType> args;
+    for (auto&& expr : expr->arguments) {
+      args.push_back(evaluate(expr.get()));
+    }
+    if (!func.hold_alternative<Function*>()) {
+      throw InterpreterRuntimeError(expr->paren,
+                                    "can only call function and class.");
+    }
+    Function* p = func.get<Function*>();
+
+    if (args.size() != p->arity()) {
+      throw InterpreterRuntimeError(
+          expr->paren, "Expected " + std::to_string(p->arity()) +
+                           " arguments but got" + std::to_string(args.size()) +
+                           ".");
+    }
+    return p->call(this, args);
   }
 
   LoxValueType visitUnaryExpr(syntax::Unary* expr) override {

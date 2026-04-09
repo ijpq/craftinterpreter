@@ -17,6 +17,10 @@ void Interpreter::interpret(
   // std::cout << stringify(v) << std::endl;
 }
 
+Interpreter::Interpreter() {
+  ClockCallable clock_func;
+  env.define("clock", &clock_func);
+}
 // std::string stringify(LoxValueType object) {
 //   if (object.hold_alternative<std::monostate>()) return "nil";
 //   if (object.hold_alternative<bool>())
