@@ -24,16 +24,6 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   Environment env;
   Environment* current_env = &env;
 
-  // class ClockCallable : LoxCallable {
-  //   template <typename T>
-  //   ClockCallable(T t) : callable(t) {}
-  //   std::function<LoxValueType(const std::vector<LoxValueType>&)> callable;
-
-  //   LoxValueType call(interpreter::Interpreter* interpreter,
-  //                     const std::vector<LoxValueType>& args) override {
-  //     callable(args);
-  //   }
-  // };
   Interpreter();
 
   void interpret(syntax::Expr* expr);
@@ -65,10 +55,20 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   // execute is for statement, create side-effect
   void execute(SST::Stmt* stmt) { stmt->accept(this); }
 
-  void executeBlock(std::vector<std::unique_ptr<SST::Stmt>>&& statements) {
-    Environment previous = std::move(this->env);  // save previous scope
-    this->env.parent_env = &previous;
-    ScopeGuard g([&]() { this->env = std::move(previous); });  // restore
+  // void executeBlock(std::vector<std::unique_ptr<SST::Stmt>>&& statements) {
+  //   Environment previous = std::move(this->env);  // save previous scope
+  //   this->env.parent_env = &previous;
+  //   ScopeGuard g([&]() { this->env = std::move(previous); });  // restore
+  //   for (auto&& stmt : statements) execute(stmt.get());
+  // }
+
+  void executeBlock(const std::vector<std::unique_ptr<SST::Stmt>>& statements,
+                    Environment* env) {
+    // switch environments by pointer. not need to considering parent_env
+    // problems.
+    Environment* previous = current_env;
+    current_env = env;
+    ScopeGuard g([&]() { current_env = previous; });  // restore
     for (auto&& stmt : statements) execute(stmt.get());
   }
 
@@ -84,17 +84,17 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   = Call(Call(f, ')', args1...), ')', ...)...
   */
   LoxValueType visitCallExpr(syntax::Call* expr) override {
-    auto func = evaluate(expr->callee.get());
+    LoxValueType func = evaluate(expr->callee.get());
 
     std::vector<LoxValueType> args;
     for (auto&& expr : expr->arguments) {
       args.push_back(evaluate(expr.get()));
     }
-    if (!func.hold_alternative<Function*>()) {
+    if (!func.hold_alternative<std::shared_ptr<LoxCallable>>()) {
       throw InterpreterRuntimeError(expr->paren,
                                     "can only call function and class.");
     }
-    Function* p = func.get<Function*>();
+    auto p = func.get<std::shared_ptr<LoxCallable>>();
 
     if (args.size() != p->arity()) {
       throw InterpreterRuntimeError(
@@ -211,7 +211,8 @@ is interpreter, it defined methods that calculate value from AST
   }
 
   SST::StmtVisitorType visitBlockStmt(SST::Block* stmt) override {
-    executeBlock(std::move(stmt->statements));
+    Environment new_env(this->current_env);
+    executeBlock(stmt->statements, &new_env);
   }
 
   SST::StmtVisitorType visitIfStmt(SST::If* stmt) override {
@@ -226,6 +227,16 @@ is interpreter, it defined methods that calculate value from AST
     while (isTruthy(evaluate(stmt->condition.get()))) {
       execute(stmt->body.get());
     }
+  }
+
+  // process function declaration.
+  SST::StmtVisitorType visitFunctionStmt(SST::Function* stmt) override {
+    Lexeme::Token func_id = stmt->name;
+    // Object manage lifespan of loxfunction, in order to avoid func will be
+    // dtor after this function call returned.
+    std::shared_ptr<LoxCallable> func =
+        std::make_shared<LoxFunction>(stmt, this->current_env);
+    current_env->define(std::string{func_id.lexeme}, func);
   }
 };
 

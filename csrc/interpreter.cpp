@@ -1,6 +1,9 @@
 #include "include/interpreter.h"
 
+#include <ctime>
+
 #include "include/expr.h"
+#include "include/loxvalue.h"
 
 namespace interpreter {
 using syntax::stringify;
@@ -17,24 +20,14 @@ void Interpreter::interpret(
   // std::cout << stringify(v) << std::endl;
 }
 
+// by wrapper class
 Interpreter::Interpreter() {
-  ClockCallable clock_func;
-  env.define("clock", &clock_func);
+  std::shared_ptr<LoxCallable> clock_func = std::make_shared<WrapperCallable>(
+      [&](const std::vector<LoxValueType>& args) {
+        return static_cast<double>(clock()) / CLOCKS_PER_SEC;
+      },
+      0, "<native fn>");
+  env.define("clock", clock_func);
 }
-// std::string stringify(LoxValueType object) {
-//   if (object.hold_alternative<std::monostate>()) return "nil";
-//   if (object.hold_alternative<bool>())
-//     return object.get<bool>() ? "true" : "false";
-//   if (object.hold_alternative<std::string>()) return
-//   object.get<std::string>(); if (object.hold_alternative<double>()) {
-//     double d = object.get<double>();
-//     if (std::floor(d) == d && std::isfinite(d)) {
-//       return std::to_string((long long)d);  // 42.0 -> "42"
-//     }
-//     char buf[32];
-//     std::snprintf(buf, sizeof(buf), "%.14g", d);
-//     return buf;  // 3.14 -> "3.14"
-//   }
-//   return "";
-// }
+
 }  // namespace interpreter

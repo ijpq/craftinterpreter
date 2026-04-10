@@ -36,7 +36,7 @@ add_library(lox_core SHARED
 # ========================================
 # AST 库：Expr 和 Visitor（不含main函数）
 # ========================================
-add_library(interpreter_lib SHARED csrc/interpreter.cpp)
+add_library(interpreter_lib SHARED csrc/interpreter.cpp csrc/loxfunction.cpp)
 target_link_libraries(interpreter_lib lox_core expr_lib)
 
 add_library(expr_lib SHARED

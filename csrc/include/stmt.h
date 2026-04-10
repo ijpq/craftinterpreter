@@ -1,6 +1,7 @@
 #pragma once
 
 #include "expr.h"
+#include "token.h"
 namespace SST {
 using syntax::Expr;
 // clang-format off
@@ -13,6 +14,7 @@ declaration    → funDecl
                | statement ;
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 primary        → "true" | "false" | "nil"
                | NUMBER | STRING
@@ -38,6 +40,7 @@ using StmtVisitorType = void;
 class Block;
 class If;
 class While;
+class Function;
 
 /*
 hold AST as member var, provide accept() to interpreter
@@ -48,7 +51,7 @@ struct Stmt {  // statement
     virtual R visitBlockStmt(Block* stmt) = 0;
     // virtual R visitClassStmt(Class* stmt) = 0;
     virtual R visitExpressionStmt(Expression* stmt) = 0;
-    // virtual R visitFunctionStmt(Function* stmt) = 0;
+    virtual R visitFunctionStmt(Function* stmt) = 0;
     virtual R visitIfStmt(If* stmt) = 0;
     virtual R visitPrintStmt(Print* stmt) = 0;
     // virtual R visitReturnStmt(Return* stmt) = 0;
@@ -128,5 +131,18 @@ struct While : Stmt {
   }
   std::unique_ptr<Expr> condition;
   std::unique_ptr<Stmt> body;
+};
+
+// created when function was declared.
+struct Function : Stmt {
+  Function(Lexeme::Token name, std::vector<Lexeme::Token> params,
+           std::vector<std::unique_ptr<Stmt>> body)
+      : name(name), params(params), body(std::move(body)) {}
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
+    return visitor->visitFunctionStmt(this);
+  }
+  Lexeme::Token name;
+  std::vector<Lexeme::Token> params;
+  std::vector<std::unique_ptr<Stmt>> body;
 };
 }  // namespace SST

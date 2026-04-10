@@ -1,5 +1,9 @@
 #pragma once
-#include "helper/object.h"
+#include <memory>
 #include <string>
-class Function;
-using LoxValueType = Object<double, std::string, bool, std::monostate, Function*>;
+
+#include "helper/object.h"
+class LoxFunction;
+class LoxCallable;
+using LoxValueType = Object<double, std::string, bool, std::monostate,
+                            std::shared_ptr<LoxCallable>>;

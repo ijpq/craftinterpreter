@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 
 #include <exception>
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <vector>
@@ -64,6 +65,7 @@ struct Parser {
 
   Parser(std::vector<Token> tokens) : tokens(tokens) {}
 
+  // helper to steps in tokens
   bool isAtEnd() { return peek().type == TokenType::_EOF; }
 
   inline void advance() { current++; }
@@ -81,7 +83,55 @@ struct Parser {
 
   Token& previous() { return tokens[current - 1]; }
 
+  Lexeme::Token consume(TokenType expected, std::string err_msg) {
+    if (expected == tokens[current].type) {
+      advance();
+      return previous();
+    }
+    throw ParserError(tokens[current], "unfinished token");
+  }
+
+  // grammar rules. Recursive descent along stratified grammar rules.
   std::unique_ptr<Expr> expression() { return assignment(); }
+
+  std::unique_ptr<Expr> assignment() {
+    std::unique_ptr<Expr> expr = logical_or();
+    if (match({TokenType::EQUAL})) {
+      Token equals = previous();
+      std::unique_ptr<Expr> value = assignment();
+
+      Expr* var = nullptr;
+      if ((var = dynamic_cast<Variable*>(expr.get())) !=
+          nullptr) {  // if left is variable
+        Token name = dynamic_cast<Variable*>(expr.get())->name;
+        return std::make_unique<Assign>(name, std::move(value));
+      }
+      // error(equals, "Invalid assignment target.");
+    }
+    return expr;
+  }
+
+  std::unique_ptr<Expr> logical_or() {
+    std::unique_ptr<Expr> expr = logical_and();
+    while (match({TokenType::OR})) {
+      Token op = previous();  // "or" keyword
+      std::unique_ptr<Expr> right = logical_and();
+      expr = std::make_unique<syntax::Logical>(std::move(expr), op,
+                                               std::move(right));
+    }
+    return expr;
+  }
+
+  std::unique_ptr<Expr> logical_and() {
+    std::unique_ptr<Expr> expr = equality();
+    while (match({TokenType::AND})) {
+      Token op = previous();
+      std::unique_ptr<Expr> right = equality();
+      expr = std::make_unique<syntax::Logical>(std::move(expr), op,
+                                               std::move(right));
+    }
+    return expr;
+  }
 
   std::unique_ptr<Expr> equality() {
     auto expr = std::unique_ptr<Expr>(comparison());
@@ -133,28 +183,15 @@ struct Parser {
     return expr;
   }
 
-  ArgumentsType arguments() {
-    ArgumentsType args;
-    std::unique_ptr<Expr> expr = expression();
-    args.push_back(std::move(expr));
-    while (match({TokenType::COMMA})) {
-      std::unique_ptr<Expr> next_arg = expression();
-      args.push_back(next_arg);
-    }
-    return std::move(args);
-  }
-
-  std::unique_ptr<Expr> finishcall(std::unique_ptr<Expr> callee) {
-    ArgumentsType args;
-    if (peek().type != TokenType::RIGHT_PAREN) { // have arguments
-      args = arguments();
-      consume(TokenType::RIGHT_PAREN, "!");
-      Token right_paren = previous();
-      return std::make_unique<syntax::Call>(std::move(callee), right_paren, std::move(args));
-    } else { // empty arguments
-      consume(TokenType::RIGHT_PAREN, "!");
-      Token right_paren = previous();
-      return std::make_unique<syntax::Call>(std::move(callee), right_paren, ArgumentsType{});
+  std::unique_ptr<Expr> unary() {
+    if (match({TokenType::BANG, TokenType::MINUS})) {
+      Token op = previous();
+      auto right = unary();
+      auto unary = std::make_unique<Unary>(std::move(op), std::move(right));
+      return std::move(unary);
+    } else {
+      auto expr = call();
+      return expr;
     }
   }
 
@@ -164,7 +201,6 @@ struct Parser {
   = Call(f, ')', args1...)(args2...)...
   = Call(Call(f, ')', args1...), ')', ...)...
   */
-
   std::unique_ptr<Expr> call() {
     std::unique_ptr<Expr> callee = primary();
     ArgumentsType args;
@@ -178,16 +214,15 @@ struct Parser {
     return callee;
   }
 
-  std::unique_ptr<Expr> unary() {
-    if (match({TokenType::BANG, TokenType::MINUS})) {
-      Token op = previous();
-      auto right = unary();
-      auto unary = std::make_unique<Unary>(std::move(op), std::move(right));
-      return std::move(unary);
-    } else {
-      auto expr = call();
-      return expr;
+  ArgumentsType arguments() {
+    ArgumentsType args;
+    std::unique_ptr<Expr> expr = expression();
+    args.push_back(std::move(expr));
+    while (match({TokenType::COMMA})) {
+      std::unique_ptr<Expr> next_arg = expression();
+      args.push_back(std::move(next_arg));
     }
+    return std::move(args);
   }
 
   std::unique_ptr<Expr> primary() {
@@ -224,12 +259,20 @@ struct Parser {
     }
   }
 
-  void consume(TokenType expected, std::string err_msg) {
-    if (expected == tokens[current].type) {
-      advance();
-      return;
+  std::unique_ptr<Expr> finishcall(std::unique_ptr<Expr> callee) {
+    ArgumentsType args;
+    if (peek().type != TokenType::RIGHT_PAREN) {  // have arguments
+      args = arguments();
+      consume(TokenType::RIGHT_PAREN, "!");
+      Token right_paren = previous();
+      return std::make_unique<syntax::Call>(std::move(callee), right_paren,
+                                            std::move(args));
+    } else {  // empty arguments
+      consume(TokenType::RIGHT_PAREN, "!");
+      Token right_paren = previous();
+      return std::make_unique<syntax::Call>(std::move(callee), right_paren,
+                                            ArgumentsType{});
     }
-    throw ParserError(tokens[current], "unfinished token");
   }
 
   void synchronize() {
@@ -250,27 +293,6 @@ struct Parser {
           advance();
       }
     }
-  }
-
-  std::vector<std::unique_ptr<SST::Stmt>> parse() {
-    std::vector<std::unique_ptr<SST::Stmt>> statements;
-    while (!isAtEnd()) {
-      statements.push_back(declaration());
-    }
-    return statements;
-  }
-
-  /*
-  build AST , use AST to build statement
-  */
-  std::unique_ptr<SST::Stmt> statement() {
-    if (match({TokenType::IF})) return ifstatement();
-    if (match({TokenType::FOR})) return forstatement();
-    if (match({TokenType::PRINT})) return printStatement();
-    if (match({TokenType::WHILE})) return whileStatement();
-    if (match({TokenType::LEFT_BRACE}))
-      return std::make_unique<SST::Block>(block());
-    return expressionStatement();
   }
 
   std::unique_ptr<Stmt> forstatement() {
@@ -361,47 +383,46 @@ struct Parser {
     return statements;
   }
 
-  std::unique_ptr<Expr> logical_and() {
-    std::unique_ptr<Expr> expr = equality();
-    while (match({TokenType::AND})) {
-      Token op = previous();
-      std::unique_ptr<Expr> right = equality();
-      expr = std::make_unique<syntax::Logical>(std::move(expr), op,
-                                               std::move(right));
+  // parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+  std::vector<Token> parameter() {
+    std::vector<Token> ret;
+    Token identifier = consume(TokenType::IDENTIFIER, "!");
+    ret.push_back(identifier);
+    while (match({TokenType::COMMA})) {
+      Token next_id = consume(TokenType::IDENTIFIER, "!");
+      ret.push_back(next_id);
     }
-    return expr;
+    return ret;
   }
 
-  std::unique_ptr<Expr> logical_or() {
-    std::unique_ptr<Expr> expr = logical_and();
-    while (match({TokenType::OR})) {
-      Token op = previous();  // "or" keyword
-      std::unique_ptr<Expr> right = logical_and();
-      expr = std::make_unique<syntax::Logical>(std::move(expr), op,
-                                               std::move(right));
-    }
-    return expr;
+  /*
+  build AST , use AST to build statement
+  */
+  std::unique_ptr<SST::Stmt> statement() {
+    if (match({TokenType::IF})) return ifstatement();
+    if (match({TokenType::FOR})) return forstatement();
+    if (match({TokenType::PRINT})) return printStatement();
+    if (match({TokenType::WHILE})) return whileStatement();
+    if (match({TokenType::LEFT_BRACE}))
+      return std::make_unique<SST::Block>(block());
+    return expressionStatement();
   }
 
-  std::unique_ptr<Expr> assignment() {
-    std::unique_ptr<Expr> expr = logical_or();
-    if (match({TokenType::EQUAL})) {
-      Token equals = previous();
-      std::unique_ptr<Expr> value = assignment();
-
-      Expr* var = nullptr;
-      if ((var = dynamic_cast<Variable*>(expr.get())) !=
-          nullptr) {  // if left is variable
-        Token name = dynamic_cast<Variable*>(expr.get())->name;
-        return std::make_unique<Assign>(name, std::move(value));
-      }
-
-      // error(equals, "Invalid assignment target.");
+  // funDecl        → "fun" function ;
+  // function       → IDENTIFIER "(" parameters? ")" block ;
+  std::unique_ptr<SST::Stmt> function(std::string kind) {
+    Token identifier = consume(TokenType::IDENTIFIER, "!");
+    consume(TokenType::LEFT_PAREN, "!");
+    std::vector<Token> param;
+    if (peek().type == TokenType::IDENTIFIER) {  // have parameter
+      param = parameter();
+      consume(TokenType::RIGHT_PAREN, "!");
     }
-
-    return expr;
+    auto body = block();
+    return std::make_unique<SST::Function>(identifier, param, std::move(body));
   }
 
+  // varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
   std::unique_ptr<SST::Var> varDeclaration() {
     if (match({TokenType::IDENTIFIER})) {
       Token identifier = previous();
@@ -416,15 +437,27 @@ struct Parser {
     }
   }
 
+  // var/func declaration
   std::unique_ptr<SST::Stmt> declaration() {
     try {
       if (match({TokenType::VAR})) return varDeclaration();
+      if (match({TokenType::FUN})) return function("function");
       return statement();
     } catch (ParserError& e) {
       synchronize();
       return nullptr;
     }
   }
+
+  // parse source code, generate Stmts
+  std::vector<std::unique_ptr<SST::Stmt>> parse() {
+    std::vector<std::unique_ptr<SST::Stmt>> statements;
+    while (!isAtEnd()) {
+      statements.push_back(declaration());
+    }
+    return statements;
+  }
+
   // std::unique_ptr<SST::Var> varStatement() {
   //   auto stmt = varDeclaration();
   //   return stmt;
