@@ -1,4 +1,5 @@
 #include "include/scanner.h"
+
 #include <unordered_map>
 
 namespace Lexeme {

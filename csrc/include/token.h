@@ -1,9 +1,10 @@
 #pragma once
-#include "tokentype.h"
 #include <iostream>
 #include <string>
 #include <type_traits>
 #include <variant>
+
+#include "tokentype.h"
 namespace Lexeme {
 class Token;
 
@@ -15,12 +16,12 @@ std::string literal_to_str(Literal literal);
 
 struct Token {
   TokenType type;
-  std::string_view lexeme; // include quotes
-  Literal literal;         // drop quotes
+  std::string_view lexeme;  // include quotes
+  Literal literal;          // drop quotes
   int line;
   std::string output_str;
 
-public:
+ public:
   Token(TokenType _type, std::string_view _lexeme, Literal _literal, int _line)
       : type(_type), lexeme(_lexeme), literal(_literal), line(_line) {
     output_str = tokenTypeToString(type) + " " + std::string(lexeme) + " " +
@@ -30,4 +31,4 @@ public:
   std::string_view to_str() const { return output_str; }
 };
 
-} // namespace Lexeme
+}  // namespace Lexeme

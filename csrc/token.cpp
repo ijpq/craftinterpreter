@@ -1,4 +1,5 @@
 #include "include/token.h"
+
 #include <cmath>
 #include <iomanip>
 #include <sstream>
@@ -45,4 +46,4 @@ std::ostream &operator<<(std::ostream &os, const Token &token) {
   return os;
 }
 
-} // namespace Lexeme
+}  // namespace Lexeme

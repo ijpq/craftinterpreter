@@ -141,8 +141,11 @@ struct Logical : Expr {
 };
 
 struct Call : Expr {
-  Call(std::unique_ptr<Expr> callee, Token paren, std::vector<std::unique_ptr<Expr>> arguments)
-  : callee(std::move(callee)), paren(paren), arguments(std::move(arguments)) {}
+  Call(std::unique_ptr<Expr> callee, Token paren,
+       std::vector<std::unique_ptr<Expr>> arguments)
+      : callee(std::move(callee)),
+        paren(paren),
+        arguments(std::move(arguments)) {}
   ReturnType accept(Visitor* visitor) override {
     return visitor->visitCallExpr(this);
   }
