@@ -2,6 +2,7 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -31,7 +32,20 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   void interpret(std::vector<std::unique_ptr<SST::Stmt>>& statements);
 
   LoxValueType visitLiteralExpr(syntax::Literal* expr) override {
-    return LoxValueType(expr->literal);
+    // return LoxValueType(expr->literal);
+    // convert expr->literal to LoxValueType, expr->literal is supposed to be
+    // subset of LoxValueType.
+    return std::visit(
+        [](auto&& arg) -> LoxValueType {
+          using T = std::decay_t<decltype(arg)>;
+          if constexpr (!std::is_same_v<T, std::shared_ptr<LoxCallable>>) {
+            return arg;
+          } else {
+            // expr->literal isn't supposed to be sharedptr,
+            // this branch shouldn't be called.
+          }
+        },
+        expr->literal);
   }
 
   LoxValueType visitGroupingExpr(syntax::Grouping* expr) override {
@@ -74,7 +88,7 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
 
   LoxValueType visitAssignExpr(syntax::Assign* expr) override {
     LoxValueType value = evaluate(expr->value.get());
-    env.assign(expr->name, value);
+    current_env->assign(expr->name, value);
     return value;
   }
 
@@ -187,7 +201,7 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   }
 
   LoxValueType visitVariableExpr(syntax::Variable* expr) override {
-    return env.get(expr->name);
+    return current_env->get(expr->name);
   }
   /*
 grab statement , call accept() of AST inside the statement. Since param visitor
@@ -207,7 +221,7 @@ is interpreter, it defined methods that calculate value from AST
     LoxValueType value = stmt->init ? evaluate(stmt->init.get())
                                     : LoxValueType(std::monostate{});
     // bind name and value
-    env.define(Environment::Key(stmt->identifier.lexeme), value);
+    current_env->define(Environment::Key(stmt->identifier.lexeme), value);
   }
 
   SST::StmtVisitorType visitBlockStmt(SST::Block* stmt) override {

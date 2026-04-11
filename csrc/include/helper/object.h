@@ -55,16 +55,16 @@ struct Object {
     return *this;
   }
 
-  // converting ctor
+  // converting ctor. if variant has same types as this in amount.
   Object(const std::variant<Ts...>& rhs) {
     constexpr_get_update(std::index_sequence_for<Ts...>{}, rhs);
   }
 
-  // arbitary converting ctor
-  template<typename ...T>
-  Object(const std::variant<T...>& rhs) {
-    constexpr_get_update(std::index_sequence_for<T...>{}, rhs);
-  }
+  // arbitary converting ctor, if variant has different types as this in amount.
+  // template<typename ...T>
+  // Object(const std::variant<T...>& rhs) {
+  //   constexpr_get_update(std::index_sequence_for<T...>{}, rhs);
+  // }
 
   template <size_t... I>
   bool isEqual(std::index_sequence<I...> _, Object& rhs) {

@@ -27,7 +27,7 @@ Interpreter::Interpreter() {
         return static_cast<double>(clock()) / CLOCKS_PER_SEC;
       },
       0, "<native fn>");
-  env.define("clock", clock_func);
+  current_env->define("clock", clock_func);
 }
 
 }  // namespace interpreter

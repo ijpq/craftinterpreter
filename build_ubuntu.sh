@@ -16,7 +16,8 @@ cd build
 cmake .. \
     -DCMAKE_BUILD_RPATH_USE_ORIGIN=ON \
     -DCMAKE_INSTALL_RPATH='$ORIGIN' \
-    -DBUILD_SHARED_LIBS=ON
+    -DBUILD_SHARED_LIBS=ON \
+    -DCMAKE_BUILD_TYPE=Debug
 
 # 编译
 cmake --build .
