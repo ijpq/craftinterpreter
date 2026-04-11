@@ -2,6 +2,7 @@
 #include <initializer_list>
 #include <memory>
 #include <variant>
+#include <vector>
 
 #include "helper/object.h"
 #include "loxvalue.h"
