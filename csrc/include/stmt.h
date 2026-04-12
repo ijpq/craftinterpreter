@@ -20,7 +20,8 @@ primary        → "true" | "false" | "nil"
                | NUMBER | STRING
                | "(" expression ")"
                | IDENTIFIER ;
-statement      → exprStmt | forStmt | ifStmt| printStmt | whileStmt | block ;
+statement      → exprStmt | forStmt | ifStmt| printStmt | whileStmt | block | returnstmt;
+returnStmt     → "return" expression? ";" ;
 forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
                  expression? ";"
                  expression? ")" statement ;
@@ -41,6 +42,7 @@ class Block;
 class If;
 class While;
 class Function;
+class Return;
 
 /*
 hold AST as member var, provide accept() to interpreter
@@ -54,7 +56,7 @@ struct Stmt {  // statement
     virtual R visitFunctionStmt(Function* stmt) = 0;
     virtual R visitIfStmt(If* stmt) = 0;
     virtual R visitPrintStmt(Print* stmt) = 0;
-    // virtual R visitReturnStmt(Return* stmt) = 0;
+    virtual R visitReturnStmt(Return* stmt) = 0;
     virtual R visitVarStmt(Var* stmt) = 0;
     virtual R visitWhileStmt(While* stmt) = 0;
     ~Visitor() = default;
@@ -145,4 +147,16 @@ struct Function : Stmt {
   std::vector<Lexeme::Token> params;
   std::vector<std::unique_ptr<Stmt>> body;
 };
+
+struct Return : Stmt {
+  Return(Lexeme::Token keyword, std::unique_ptr<Expr> value)
+      : keyword(keyword), value(std::move(value)) {}
+
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {
+    return visitor->visitReturnStmt(this);
+  }
+  Lexeme::Token keyword;
+  std::unique_ptr<Expr> value;
+};
+
 }  // namespace SST

@@ -116,7 +116,12 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
                            " arguments but got" + std::to_string(args.size()) +
                            ".");
     }
-    return p->call(this, args);
+    try {
+      p->call(this, args);
+    } catch (interpreter::Return& ret) {
+      return ret.value;
+    }
+    return LoxValueType(std::monostate{});
   }
 
   LoxValueType visitUnaryExpr(syntax::Unary* expr) override {
@@ -251,6 +256,12 @@ is interpreter, it defined methods that calculate value from AST
     std::shared_ptr<LoxCallable> func =
         std::make_shared<LoxFunction>(stmt, this->current_env);
     current_env->define(std::string{func_id.lexeme}, func);
+  }
+
+  SST::StmtVisitorType visitReturnStmt(SST::Return* stmt) override {
+    LoxValueType value;
+    if (stmt->value) value = evaluate(stmt->value.get());
+    throw interpreter::Return(stmt->keyword, value, "return value");
   }
 };
 
