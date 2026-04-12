@@ -1,0 +1,26 @@
+// ch10: basic function call and return
+fun add(a, b) {
+  return a + b;
+}
+print add(3, 4);
+
+// no return → nil
+fun nothing() {}
+print nothing();
+
+// early return
+fun sign(n) {
+  if (n > 0) return "positive";
+  if (n < 0) return "negative";
+  return "zero";
+}
+print sign(5);
+print sign(-3);
+print sign(0);
+
+// recursive
+fun fib(n) {
+  if (n <= 1) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+print fib(7);

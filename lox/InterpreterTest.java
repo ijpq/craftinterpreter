@@ -1,5 +1,7 @@
 package lox;
 
+import java.util.List;
+
 /** Chapter 7 Interpreter 单元测试 无需 JUnit，直接运行: java -cp . lox.InterpreterTest */
 public class InterpreterTest {
   private static int passed = 0;
@@ -50,6 +52,28 @@ public class InterpreterTest {
 
   static Expr.Grouping group(Expr inner) {
     return new Expr.Grouping(inner);
+  }
+
+  // ── 辅助：运行完整 Lox 程序，捕获 stdout ────────────────────────────────
+
+  static String runProgram(String source) {
+    Lox.hadError = false;
+    Lox.hadRuntimeError = false;
+    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+    java.io.PrintStream oldOut = System.out;
+    System.setOut(new java.io.PrintStream(baos));
+    try {
+      Scanner scanner = new Scanner(source);
+      List<Token> tokens = scanner.scanTokens();
+      Parser parser = new Parser(tokens);
+      List<Stmt> stmts = parser.parse();
+      if (!Lox.hadError) {
+        new Interpreter().interpret(stmts);
+      }
+    } finally {
+      System.setOut(oldOut);
+    }
+    return baos.toString().trim();
   }
 
   // ── 测试入口 ──────────────────────────────────────────────────────────────
@@ -136,6 +160,73 @@ public class InterpreterTest {
         "+ mixed types", () -> interp.visitBinaryExpr(binary(lit(1.0), TokenType.PLUS, lit("s"))));
     assertRuntimeError(
         "* on string", () -> interp.visitBinaryExpr(binary(lit("a"), TokenType.STAR, lit(2.0))));
+
+    // ── Summary ──────────────────────────────────────────────────────────────
+    System.out.println("");
+
+    // ── 10. Functions / Return (Ch10) ────────────────────────────────────────
+    System.out.println("[10] Functions and Return (Ch10)");
+
+    assertEqual(
+        "basic return value",
+        "42",
+        runProgram("fun add(a, b) { return a + b; } print add(20, 22);"));
+
+    assertEqual(
+        "no return stmt → nil",
+        "nil",
+        runProgram("fun f() {} print f();"));
+
+    assertEqual(
+        "early return",
+        "yes",
+        runProgram("fun sign(n) { if (n > 0) return \"yes\"; return \"no\"; } print sign(5);"));
+
+    assertEqual(
+        "recursive fibonacci",
+        "13",
+        runProgram(
+            "fun fib(n) { if (n <= 1) return n; return fib(n-2) + fib(n-1); } print fib(7);"));
+
+    assertEqual(
+        "stringify LoxFunction",
+        "<fn greet>",
+        runProgram("fun greet(name) { return name; } print greet;"));
+
+    assertRuntimeError(
+        "call non-callable",
+        () -> {
+          Interpreter i2 = new Interpreter();
+          Token paren = tok(TokenType.RIGHT_PAREN, ")");
+          Expr.Call call =
+              new Expr.Call(
+                  new Expr.Literal(42.0), paren, java.util.Collections.emptyList());
+          i2.visitCallExpr(call);
+        });
+
+    assertRuntimeError(
+        "arity mismatch",
+        () -> {
+          Interpreter i2 = new Interpreter();
+          Token fname = tok(TokenType.IDENTIFIER, "f");
+          Token param = tok(TokenType.IDENTIFIER, "a");
+          // fun f(a) { return a; }
+          Stmt.Function decl =
+              new Stmt.Function(
+                  fname,
+                  java.util.Arrays.asList(param),
+                  java.util.Arrays.asList(
+                      new Stmt.Return(
+                          tok(TokenType.RETURN, "return"), new Expr.Variable(param))));
+          i2.visitFunctionStmt(decl);
+          // call f() with 0 arguments
+          Expr.Call call =
+              new Expr.Call(
+                  new Expr.Variable(fname),
+                  tok(TokenType.RIGHT_PAREN, ")"),
+                  java.util.Collections.emptyList());
+          i2.visitCallExpr(call);
+        });
 
     // ── Summary ──────────────────────────────────────────────────────────────
     System.out.println("\n========================================");

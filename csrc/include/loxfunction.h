@@ -57,11 +57,9 @@ struct LoxFunction : LoxCallable {
   LoxValueType call(interpreter::Interpreter* interpreter,
                     const std::vector<LoxValueType>& args) override;
 
-  size_t arity() const override {}
+  size_t arity() const override { return declaration->params.size(); }
 
-  std::string toString() override {}
-  // template<typename ...T>
-  // LoxValueType operator()(T&& ...t) {
-
-  // }
+  std::string toString() override {
+    return "<fn " + std::string{declaration->name.lexeme} + ">";
+  }
 };

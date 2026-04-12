@@ -3,6 +3,7 @@
 #include <exception>
 #include <functional>
 #include <initializer_list>
+#include <iterator>
 #include <memory>
 #include <vector>
 
@@ -348,6 +349,17 @@ struct Parser {
     return std::make_unique<SST::While>(std::move(condition), std::move(body));
   }
 
+  std::unique_ptr<SST::Stmt> returnstatement() {
+    Token keyword = previous();
+    std::unique_ptr<Expr> value = nullptr;
+    if (tokens[current].type != TokenType::SEMICOLON) {
+      value = expression();
+    }
+
+    consume(TokenType::SEMICOLON, "Expect ';' after return value.");
+    return std::make_unique<SST::Return>(keyword, std::move(value));
+  }
+
   std::unique_ptr<SST::Stmt> ifstatement() {
     consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
     std::unique_ptr<Expr> condition = expression();
@@ -399,6 +411,7 @@ struct Parser {
   build AST , use AST to build statement
   */
   std::unique_ptr<SST::Stmt> statement() {
+    if (match({TokenType::RETURN})) return returnstatement();
     if (match({TokenType::IF})) return ifstatement();
     if (match({TokenType::FOR})) return forstatement();
     if (match({TokenType::PRINT})) return printStatement();
@@ -416,8 +429,9 @@ struct Parser {
     std::vector<Token> param;
     if (peek().type == TokenType::IDENTIFIER) {  // have parameter
       param = parameter();
-      consume(TokenType::RIGHT_PAREN, "!");
     }
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.");
+    consume(TokenType::LEFT_BRACE, "Expect '{' before function body.");
     auto body = block();
     return std::make_unique<SST::Function>(identifier, param, std::move(body));
   }
