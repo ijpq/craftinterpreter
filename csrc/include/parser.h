@@ -429,8 +429,9 @@ struct Parser {
     std::vector<Token> param;
     if (peek().type == TokenType::IDENTIFIER) {  // have parameter
       param = parameter();
-      consume(TokenType::RIGHT_PAREN, "!");
     }
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.");
+    consume(TokenType::LEFT_BRACE, "Expect '{' before function body.");
     auto body = block();
     return std::make_unique<SST::Function>(identifier, param, std::move(body));
   }

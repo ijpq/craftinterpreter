@@ -1,8 +1,10 @@
 #include "include/loxfunction.h"
 
 #include <functional>
+#include <variant>
 
 #include "include/interpreter.h"
+#include "include/loxvalue.h"
 #include "include/runtimeerror.h"
 LoxValueType LoxFunction::call(interpreter::Interpreter* interpreter,
                                const std::vector<LoxValueType>& args) {
@@ -24,4 +26,5 @@ LoxValueType LoxFunction::call(interpreter::Interpreter* interpreter,
 
   // execute function body
   interpreter->executeBlock(declaration->body, &new_env);
+  return LoxValueType{std::monostate{}};
 }

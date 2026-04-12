@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <variant>
 
+#include "include/loxfunction.h"
 #include "include/token.h"
 
 namespace syntax {
@@ -20,6 +21,8 @@ std::string stringify(Visitor::ReturnType obj) {
     std::snprintf(buf, sizeof(buf), "%.14g", d);
     return buf;
   }
+  if (obj.hold_alternative<std::shared_ptr<LoxCallable>>())
+    return obj.get<std::shared_ptr<LoxCallable>>()->toString();
   return "";
 }
 

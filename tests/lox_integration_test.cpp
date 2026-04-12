@@ -511,6 +511,82 @@ TEST(Ch9Consistency, ForFibonacci) {
 }
 
 // ============================================================
+// Chapter 10 — functions and return
+// ============================================================
+
+TEST(Ch10Functions, BasicReturn) {
+  EXPECT_EQ(runLox("fun add(a, b) { return a + b; } print add(3, 4);"), "7\n");
+}
+
+TEST(Ch10Functions, NoReturn) {
+  EXPECT_EQ(runLox("fun f() {} print f();"), "nil\n");
+}
+
+TEST(Ch10Functions, EarlyReturn) {
+  EXPECT_EQ(runLox("fun sign(n) { if (n > 0) return \"pos\"; return \"neg\"; }"
+                   "print sign(5); print sign(-1);"),
+            "pos\nneg\n");
+}
+
+TEST(Ch10Functions, ReturnInWhile) {
+  EXPECT_EQ(runLox("fun firstOver(n) {"
+                   "  var i = 0;"
+                   "  while (true) { i = i + 1; if (i > n) return i; }"
+                   "}"
+                   "print firstOver(3);"),
+            "4\n");
+}
+
+TEST(Ch10Functions, RecursiveFib) {
+  EXPECT_EQ(
+      runLox("fun fib(n) { if (n <= 1) return n; return fib(n-2)+fib(n-1); }"
+             "print fib(7);"),
+      "13\n");
+}
+
+TEST(Ch10Functions, StringifyFunction) {
+  EXPECT_EQ(runLox("fun greet(name) { return name; } print greet;"),
+            "<fn greet>\n");
+}
+
+TEST(Ch10Functions, ArityMismatch) {
+  std::string out = runLox("fun f(a) { return a; } f();");
+  EXPECT_NE(out.find("arguments"), std::string::npos)
+      << "Expected arity error, got: " << out;
+}
+
+TEST(Ch10Functions, CallNonCallable) {
+  std::string out = runLox("var x = 42; x();");
+  EXPECT_NE(out.find("call"), std::string::npos)
+      << "Expected 'can only call' error, got: " << out;
+}
+
+// ============================================================
+// Chapter 10 — Java vs C++ consistency
+// ============================================================
+
+TEST(Ch10Consistency, BasicReturn) {
+  expectConsistent("fun add(a, b) { return a + b; } print add(3, 4);");
+}
+
+TEST(Ch10Consistency, NoReturn) { expectConsistent("fun f() {} print f();"); }
+
+TEST(Ch10Consistency, RecursiveFib) {
+  expectConsistent(
+      "fun fib(n) { if (n <= 1) return n; return fib(n-2)+fib(n-1); }"
+      "print fib(7);");
+}
+
+TEST(Ch10Consistency, ReturnInWhile) {
+  expectConsistent(
+      "fun firstOver(n) {"
+      "  var i = 0;"
+      "  while (true) { i = i + 1; if (i > n) return i; }"
+      "}"
+      "print firstOver(3);");
+}
+
+// ============================================================
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
