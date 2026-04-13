@@ -106,14 +106,14 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     }
     if (!func.hold_alternative<std::shared_ptr<LoxCallable>>()) {
       throw InterpreterRuntimeError(expr->paren,
-                                    "can only call function and class.");
+                                    "Can only call functions and classes.");
     }
     auto p = func.get<std::shared_ptr<LoxCallable>>();
 
     if (args.size() != p->arity()) {
       throw InterpreterRuntimeError(
           expr->paren, "Expected " + std::to_string(p->arity()) +
-                           " arguments but got" + std::to_string(args.size()) +
+                           " arguments but got " + std::to_string(args.size()) +
                            ".");
     }
     try {
