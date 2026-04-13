@@ -53,7 +53,7 @@ class Lox {
   }
 
   static void runtimeError(interpreter::InterpreterRuntimeError& error) {
-    std::cerr << error.getMessage() << "\n [Line " << error.token.line << "]"
+    std::cerr << error.getMessage() << "\n[line " << error.token.line << "]"
               << std::endl;
     hadRuntimeError = true;
   }
