@@ -586,6 +586,30 @@ TEST(Ch10Consistency, ReturnInWhile) {
       "print firstOver(3);");
 }
 
+TEST(Ch10Consistency, NestedFunctionDecl) {
+  expectConsistent(
+      "fun outer() {"
+      "  fun inner() { return 42; }"
+      "  return inner();"
+      "}"
+      "print outer();");
+}
+
+TEST(Ch10Consistency, NestedFunctionClosesOverOuter) {
+  expectConsistent(
+      "fun makeAdder(x) {"
+      "  fun adder(y) { return x + y; }"
+      "  return adder(10);"
+      "}"
+      "print makeAdder(5);");
+}
+
+TEST(Ch10Consistency, ArityMismatch) {
+  expectConsistent("fun f(a) { return a; } f();");
+}
+
+TEST(Ch10Consistency, CallNonCallable) { expectConsistent("var x = 42; x();"); }
+
 // ============================================================
 
 int main(int argc, char** argv) {
