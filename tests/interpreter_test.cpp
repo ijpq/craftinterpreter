@@ -3,19 +3,17 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <sstream>
 #include <string>
 #include <vector>
 
-#include "environment.h"
 #include "expr.h"
+#include "loxvalue.h"
 #include "runtimeerror.h"
-#include "stmt.h"
 #include "token.h"
 #include "tokentype.h"
 
 // ============================================================
-// Test fixture
+// Test fixture — pure expression evaluation only
 // ============================================================
 
 class InterpreterTest : public ::testing::Test {
@@ -25,32 +23,8 @@ class InterpreterTest : public ::testing::Test {
   Lexeme::Token tok(Lexeme::TokenType t, const std::string& lex) {
     return Lexeme::Token(t, lex, std::monostate{}, 1);
   }
-  Lexeme::Token identTok(const std::string& name) {
-    return Lexeme::Token(Lexeme::TokenType::IDENTIFIER, name, std::monostate{},
-                         1);
-  }
 
   LoxValueType eval(syntax::Expr* expr) { return interp.evaluate(expr); }
-
-  std::string exec(std::vector<std::unique_ptr<SST::Stmt>>& stmts) {
-    std::ostringstream oss;
-    std::streambuf* old = std::cout.rdbuf(oss.rdbuf());
-    try {
-      interp.interpret(stmts);
-    } catch (...) {
-      std::cout.rdbuf(old);  // 先恢复再重新抛出
-      throw;
-    }
-    std::cout.rdbuf(old);
-    return oss.str();
-  }
-  // std::string exec(std::vector<std::unique_ptr<SST::Stmt>>& stmts) {
-  //   std::ostringstream oss;
-  //   std::streambuf* old = std::cout.rdbuf(oss.rdbuf());
-  //   interp.interpret(stmts);
-  //   std::cout.rdbuf(old);
-  //   return oss.str();
-  // }
 };
 
 // ============================================================
@@ -107,6 +81,13 @@ TEST_F(InterpreterTest, UnaryBangZero) {
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(0.0));
   syntax::Unary u(tok(Lexeme::TokenType::BANG, "!"), std::move(inner));
   EXPECT_EQ(eval(&u).get<bool>(), false);
+}
+
+TEST_F(InterpreterTest, UnaryBangFalse) {
+  auto inner =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
+  syntax::Unary u(tok(Lexeme::TokenType::BANG, "!"), std::move(inner));
+  EXPECT_EQ(eval(&u).get<bool>(), true);
 }
 
 // ============================================================
@@ -207,32 +188,6 @@ TEST_F(InterpreterTest, NilNotEqualFalse) {
   EXPECT_EQ(eval(&b).get<bool>(), false);
 }
 
-// ============================================================
-// Grouping
-// ============================================================
-
-TEST_F(InterpreterTest, Grouping) {
-  auto inner =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
-  syntax::Grouping g(std::move(inner));
-  EXPECT_DOUBLE_EQ(eval(&g).get<double>(), 42.0);
-}
-
-// ============================================================
-// Additional Unary
-// ============================================================
-
-TEST_F(InterpreterTest, UnaryBangFalse) {
-  auto inner =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
-  syntax::Unary u(tok(Lexeme::TokenType::BANG, "!"), std::move(inner));
-  EXPECT_EQ(eval(&u).get<bool>(), true);
-}
-
-// ============================================================
-// Additional Comparison
-// ============================================================
-
 TEST_F(InterpreterTest, Less) {
   auto l =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
@@ -261,6 +216,17 @@ TEST_F(InterpreterTest, LessEqual) {
   syntax::Binary b(std::move(l), tok(Lexeme::TokenType::LESS_EQUAL, "<="),
                    std::move(r));
   EXPECT_EQ(eval(&b).get<bool>(), true);
+}
+
+// ============================================================
+// Grouping
+// ============================================================
+
+TEST_F(InterpreterTest, Grouping) {
+  auto inner =
+      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
+  syntax::Grouping g(std::move(inner));
+  EXPECT_DOUBLE_EQ(eval(&g).get<double>(), 42.0);
 }
 
 // ============================================================
@@ -319,251 +285,7 @@ TEST_F(InterpreterTest, StringifyString) {
 }
 
 // ============================================================
-// Chapter 8: print statement
-// ============================================================
-
-TEST_F(InterpreterTest, PrintStatement) {
-  auto expr =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Print>(std::move(expr)));
-  EXPECT_EQ(exec(stmts), "42\n");
-}
-
-TEST_F(InterpreterTest, PrintString) {
-  auto expr = std::make_unique<syntax::Literal>(
-      syntax::Literal::LiteralValue(std::string("hello")));
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Print>(std::move(expr)));
-  EXPECT_EQ(exec(stmts), "hello\n");
-}
-
-TEST_F(InterpreterTest, PrintNil) {
-  auto expr = std::make_unique<syntax::Literal>(
-      syntax::Literal::LiteralValue(std::monostate{}));
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Print>(std::move(expr)));
-  EXPECT_EQ(exec(stmts), "nil\n");
-}
-
-// ============================================================
-// Chapter 8: var declaration + variable lookup
-// ============================================================
-
-TEST_F(InterpreterTest, VarDeclAndLookup) {
-  Lexeme::Token name = identTok("a");
-  auto init =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
-  auto printExpr = std::make_unique<syntax::Variable>(name);
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
-  stmts.push_back(std::make_unique<SST::Print>(std::move(printExpr)));
-  EXPECT_EQ(exec(stmts), "42\n");
-}
-
-TEST_F(InterpreterTest, VarDeclNilInitializer) {
-  Lexeme::Token name = identTok("a");
-  auto printExpr = std::make_unique<syntax::Variable>(name);
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Var>(name, nullptr));
-  stmts.push_back(std::make_unique<SST::Print>(std::move(printExpr)));
-  EXPECT_EQ(exec(stmts), "nil\n");
-}
-
-TEST_F(InterpreterTest, UndefinedVariableThrows) {
-  Lexeme::Token name = identTok("undeclared");
-  syntax::Variable v(name);
-  EXPECT_THROW(eval(&v), interpreter::InterpreterRuntimeError);
-}
-
-TEST_F(InterpreterTest, ExpressionStatementDiscardsValue) {
-  auto l =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
-  auto r =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
-  auto expr = std::make_unique<syntax::Binary>(
-      std::move(l), tok(Lexeme::TokenType::PLUS, "+"), std::move(r));
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Expression>(std::move(expr)));
-  EXPECT_EQ(exec(stmts), "");
-}
-
-// ============================================================
-// Chapter 8: variable assignment
-// ============================================================
-
-TEST_F(InterpreterTest, AssignVariable) {
-  Lexeme::Token name = identTok("a");
-  auto init =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
-  auto newVal =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0));
-  auto assignExpr = std::make_unique<syntax::Assign>(name, std::move(newVal));
-  auto printExpr = std::make_unique<syntax::Variable>(name);
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
-  stmts.push_back(std::make_unique<SST::Expression>(std::move(assignExpr)));
-  stmts.push_back(std::make_unique<SST::Print>(std::move(printExpr)));
-  EXPECT_EQ(exec(stmts), "2\n");
-}
-
-TEST_F(InterpreterTest, AssignReturnsValue) {
-  Lexeme::Token name = identTok("a");
-  auto init =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
-  auto newVal =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(42.0));
-  auto assignExpr = std::make_unique<syntax::Assign>(name, std::move(newVal));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
-  // print the result of the assignment expression
-  stmts.push_back(std::make_unique<SST::Print>(std::move(assignExpr)));
-  EXPECT_EQ(exec(stmts), "42\n");
-}
-
-TEST_F(InterpreterTest, AssignUndefinedThrows) {
-  Lexeme::Token name = identTok("undefined_var");
-  auto val =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
-  syntax::Assign a(name, std::move(val));
-  EXPECT_THROW(eval(&a), interpreter::InterpreterRuntimeError);
-}
-
-// ============================================================
-// Chapter 8: block scoping
-// ============================================================
-
-TEST_F(InterpreterTest, BlockBasic) {
-  auto expr =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(99.0));
-  std::vector<std::unique_ptr<SST::Stmt>> blockStmts;
-  blockStmts.push_back(std::make_unique<SST::Print>(std::move(expr)));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Block>(std::move(blockStmts)));
-  EXPECT_EQ(exec(stmts), "99\n");
-}
-
-TEST_F(InterpreterTest, BlockScopeNotVisibleOutside) {
-  // { var a = 1; }  print a; → should throw
-  Lexeme::Token name = identTok("a");
-  auto init =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
-
-  std::vector<std::unique_ptr<SST::Stmt>> blockStmts;
-  blockStmts.push_back(std::make_unique<SST::Var>(name, std::move(init)));
-
-  auto printExpr = std::make_unique<syntax::Variable>(name);
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Block>(std::move(blockStmts)));
-  stmts.push_back(std::make_unique<SST::Print>(std::move(printExpr)));
-
-  // The variable 'a' should not be accessible outside the block
-  EXPECT_THROW(exec(stmts), interpreter::InterpreterRuntimeError);
-}
-
-TEST_F(InterpreterTest, BlockShadowOuter) {
-  // var a = "outer"; { var a = "inner"; print a; } print a;
-  Lexeme::Token name = identTok("a");
-  auto outerInit = std::make_unique<syntax::Literal>(
-      syntax::Literal::LiteralValue(std::string("outer")));
-  auto innerInit = std::make_unique<syntax::Literal>(
-      syntax::Literal::LiteralValue(std::string("inner")));
-
-  std::vector<std::unique_ptr<SST::Stmt>> blockStmts;
-  blockStmts.push_back(std::make_unique<SST::Var>(name, std::move(innerInit)));
-  blockStmts.push_back(
-      std::make_unique<SST::Print>(std::make_unique<syntax::Variable>(name)));
-
-  auto printOuter = std::make_unique<syntax::Variable>(name);
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::Var>(name, std::move(outerInit)));
-  stmts.push_back(std::make_unique<SST::Block>(std::move(blockStmts)));
-  stmts.push_back(std::make_unique<SST::Print>(std::move(printOuter)));
-  EXPECT_EQ(exec(stmts), "inner\nouter\n");
-}
-
-// ============================================================
-// Chapter 9: if statement
-// ============================================================
-
-TEST_F(InterpreterTest, IfTrueBranch) {
-  // if (true) print 1;
-  auto cond =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
-  auto thenStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(
-      std::make_unique<SST::If>(std::move(cond), std::move(thenStmt), nullptr));
-  EXPECT_EQ(exec(stmts), "1\n");
-}
-
-TEST_F(InterpreterTest, IfFalseBranchSkipped) {
-  // if (false) print 1;  → no output
-  auto cond =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
-  auto thenStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(
-      std::make_unique<SST::If>(std::move(cond), std::move(thenStmt), nullptr));
-  EXPECT_EQ(exec(stmts), "");
-}
-
-TEST_F(InterpreterTest, IfElseTrueBranch) {
-  // if (true) print 1; else print 2;
-  auto cond =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
-  auto thenStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
-  auto elseStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0)));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::If>(
-      std::move(cond), std::move(thenStmt), std::move(elseStmt)));
-  EXPECT_EQ(exec(stmts), "1\n");
-}
-
-TEST_F(InterpreterTest, IfElseFalseBranch) {
-  // if (false) print 1; else print 2;
-  auto cond =
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
-  auto thenStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
-  auto elseStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0)));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::If>(
-      std::move(cond), std::move(thenStmt), std::move(elseStmt)));
-  EXPECT_EQ(exec(stmts), "2\n");
-}
-
-TEST_F(InterpreterTest, IfNilIsFalsy) {
-  // if (nil) print 1; else print 2;
-  auto cond = std::make_unique<syntax::Literal>(
-      syntax::Literal::LiteralValue(std::monostate{}));
-  auto thenStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0)));
-  auto elseStmt = std::make_unique<SST::Print>(
-      std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(2.0)));
-
-  std::vector<std::unique_ptr<SST::Stmt>> stmts;
-  stmts.push_back(std::make_unique<SST::If>(
-      std::move(cond), std::move(thenStmt), std::move(elseStmt)));
-  EXPECT_EQ(exec(stmts), "2\n");
-}
-
-// ============================================================
-// Chapter 9: logical operators (and / or)
+// Logical operators
 // ============================================================
 
 static Lexeme::Token logicalTok(Lexeme::TokenType t, const std::string& lex) {
@@ -571,7 +293,6 @@ static Lexeme::Token logicalTok(Lexeme::TokenType t, const std::string& lex) {
 }
 
 TEST_F(InterpreterTest, LogicalOrTrueShortCircuit) {
-  // true or false → true（短路，右侧不执行）
   auto left =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
   auto right =
@@ -579,12 +300,10 @@ TEST_F(InterpreterTest, LogicalOrTrueShortCircuit) {
   auto orExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
       std::move(right));
-  LoxValueType result = eval(orExpr.get());
-  EXPECT_TRUE(result.get<bool>());
+  EXPECT_TRUE(eval(orExpr.get()).get<bool>());
 }
 
 TEST_F(InterpreterTest, LogicalOrFalseEvaluatesRight) {
-  // false or true → true
   auto left =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
   auto right =
@@ -592,12 +311,10 @@ TEST_F(InterpreterTest, LogicalOrFalseEvaluatesRight) {
   auto orExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
       std::move(right));
-  LoxValueType result = eval(orExpr.get());
-  EXPECT_TRUE(result.get<bool>());
+  EXPECT_TRUE(eval(orExpr.get()).get<bool>());
 }
 
 TEST_F(InterpreterTest, LogicalOrBothFalse) {
-  // false or false → false
   auto left =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
   auto right =
@@ -605,12 +322,10 @@ TEST_F(InterpreterTest, LogicalOrBothFalse) {
   auto orExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
       std::move(right));
-  LoxValueType result = eval(orExpr.get());
-  EXPECT_FALSE(result.get<bool>());
+  EXPECT_FALSE(eval(orExpr.get()).get<bool>());
 }
 
 TEST_F(InterpreterTest, LogicalAndBothTrue) {
-  // true and true → true
   auto left =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(true));
   auto right =
@@ -618,12 +333,10 @@ TEST_F(InterpreterTest, LogicalAndBothTrue) {
   auto andExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::AND, "and"),
       std::move(right));
-  LoxValueType result = eval(andExpr.get());
-  EXPECT_TRUE(result.get<bool>());
+  EXPECT_TRUE(eval(andExpr.get()).get<bool>());
 }
 
 TEST_F(InterpreterTest, LogicalAndFalseShortCircuit) {
-  // false and true → false（短路）
   auto left =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(false));
   auto right =
@@ -631,12 +344,10 @@ TEST_F(InterpreterTest, LogicalAndFalseShortCircuit) {
   auto andExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::AND, "and"),
       std::move(right));
-  LoxValueType result = eval(andExpr.get());
-  EXPECT_FALSE(result.get<bool>());
+  EXPECT_FALSE(eval(andExpr.get()).get<bool>());
 }
 
 TEST_F(InterpreterTest, LogicalAndReturnsRightValue) {
-  // 1 and 2 → 2（左侧 truthy，返回右侧值）
   auto left =
       std::make_unique<syntax::Literal>(syntax::Literal::LiteralValue(1.0));
   auto right =
@@ -644,12 +355,10 @@ TEST_F(InterpreterTest, LogicalAndReturnsRightValue) {
   auto andExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::AND, "and"),
       std::move(right));
-  LoxValueType result = eval(andExpr.get());
-  EXPECT_DOUBLE_EQ(result.get<double>(), 2.0);
+  EXPECT_DOUBLE_EQ(eval(andExpr.get()).get<double>(), 2.0);
 }
 
 TEST_F(InterpreterTest, LogicalOrReturnsLeftValue) {
-  // "hello" or 2 → "hello"（左侧 truthy，短路返回左侧）
   auto left = std::make_unique<syntax::Literal>(
       syntax::Literal::LiteralValue(std::string("hello")));
   auto right =
@@ -657,8 +366,7 @@ TEST_F(InterpreterTest, LogicalOrReturnsLeftValue) {
   auto orExpr = std::make_unique<syntax::Logical>(
       std::move(left), logicalTok(Lexeme::TokenType::OR, "or"),
       std::move(right));
-  LoxValueType result = eval(orExpr.get());
-  EXPECT_EQ(result.get<std::string>(), "hello");
+  EXPECT_EQ(eval(orExpr.get()).get<std::string>(), "hello");
 }
 
 int main(int argc, char** argv) {

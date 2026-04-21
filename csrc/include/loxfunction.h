@@ -49,9 +49,12 @@ struct WrapperCallable : LoxCallable {
 
 struct LoxFunction : LoxCallable {
   SST::Function* declaration;
-  interpreter::Environment* declaration_env;
+  std::shared_ptr<interpreter::Environment>
+      declaration_env;  // a environment when function is declared, in order to
+                        // capture this env.
 
-  LoxFunction(SST::Function* declaration, interpreter::Environment* env)
+  LoxFunction(SST::Function* declaration,
+              std::shared_ptr<interpreter::Environment> env)
       : declaration(declaration), declaration_env(env) {}
 
   LoxValueType call(interpreter::Interpreter* interpreter,

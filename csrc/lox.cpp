@@ -1,6 +1,7 @@
 #include "include/lox.h"
 
 #include "include/parser.h"
+#include "include/resolver.h"
 #include "include/scanner.h"
 
 namespace Lexeme {
@@ -16,6 +17,10 @@ void Lox::run(const std::string& contents) {
       parser.parse();  // statesment own this unique ptr.
   // replace this starting from ch8
   // std::unique_ptr<Expr> expression = parser.parse();
+
+  if (hadError) return;
+  Resolver resolver(&Lox::interpreter_);
+  resolver.resolve(statements);
 
   if (hadError) return;
 
