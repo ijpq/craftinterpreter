@@ -13,15 +13,31 @@ struct Environment {
   using value_type = std::pair<Key, Value>;
 
   std::unordered_map<std::string, LoxValueType> map;
-  Environment* parent_env = nullptr;
+  std::shared_ptr<Environment> parent_env = nullptr;
 
   Environment() = default;  // used for global scope
-  Environment(Environment* parent_env) : parent_env(parent_env) {}
+  Environment(std::shared_ptr<Environment> parent_env)
+      : parent_env(parent_env) {}
 
   void define(std::string name, LoxValueType value) {
     map.emplace(std::make_pair(name, value));
   }
 
+  LoxValueType getAt(int depth, const Lexeme::Token& token) {
+    Environment* env = this;
+    while (depth--) {
+      env = env->parent_env.get();
+    }
+    return env->get(token);
+  }
+
+  void assignAt(int depth, const Lexeme::Token& token, LoxValueType value) {
+    Environment* env = this;
+    while (depth--) {
+      env = env->parent_env.get();
+    }
+    env->assign(token, value);
+  }
   // in order to throw InterpreterRuntimeError which show line number
   LoxValueType get(const Lexeme::Token& name) {
     if (map.find(std::string{name.lexeme}) != map.end())

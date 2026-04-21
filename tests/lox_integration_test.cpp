@@ -611,6 +611,199 @@ TEST(Ch10Consistency, ArityMismatch) {
 TEST(Ch10Consistency, CallNonCallable) { expectConsistent("var x = 42; x();"); }
 
 // ============================================================
+// Chapter 11 — Resolver: variable resolution & closures
+// ============================================================
+
+TEST(Ch11Resolver, ClosureCapturesCorrectScope) {
+  // The bug from ch11 intro: showA should always print "global"
+  EXPECT_EQ(runLox("var a = \"global\";\n"
+                   "{\n"
+                   "  fun showA() {\n"
+                   "    print a;\n"
+                   "  }\n"
+                   "  showA();\n"
+                   "  var a = \"block\";\n"
+                   "  showA();\n"
+                   "}"),
+            "global\nglobal\n");
+}
+
+TEST(Ch11Resolver, NestedScopeResolution) {
+  EXPECT_EQ(runLox("var a = 1;\n"
+                   "{\n"
+                   "  var b = 2;\n"
+                   "  {\n"
+                   "    var c = 3;\n"
+                   "    print a;\n"
+                   "    print b;\n"
+                   "    print c;\n"
+                   "  }\n"
+                   "}"),
+            "1\n2\n3\n");
+}
+
+TEST(Ch11Resolver, ClosureKeepsEnv) {
+  EXPECT_EQ(runLox("fun makeAdder(x) {\n"
+                   "  fun add(y) { return x + y; }\n"
+                   "  return add;\n"
+                   "}\n"
+                   "var addFive = makeAdder(5);\n"
+                   "print addFive(10);"),
+            "15\n");
+}
+
+TEST(Ch11Resolver, CounterClosure) {
+  EXPECT_EQ(runLox("fun makeCounter() {\n"
+                   "  var i = 0;\n"
+                   "  fun count() {\n"
+                   "    i = i + 1;\n"
+                   "    print i;\n"
+                   "  }\n"
+                   "  return count;\n"
+                   "}\n"
+                   "var counter = makeCounter();\n"
+                   "counter();\n"
+                   "counter();\n"
+                   "counter();"),
+            "1\n2\n3\n");
+}
+
+TEST(Ch11Resolver, TopLevelReturnError) {
+  std::string out = runLox("return 1;");
+  EXPECT_NE(out.find("return"), std::string::npos)
+      << "Expected top-level return error, got: " << out;
+}
+
+TEST(Ch11Resolver, SelfReferenceInInitializer) {
+  std::string out = runLox(
+      "var a = 1;\n"
+      "{\n"
+      "  var a = a;\n"
+      "}");
+  EXPECT_NE(out.find("own initializer"), std::string::npos)
+      << "Expected self-reference error, got: " << out;
+}
+
+TEST(Ch11Resolver, DuplicateVarInScope) {
+  std::string out = runLox(
+      "{\n"
+      "  var a = 1;\n"
+      "  var a = 2;\n"
+      "}");
+  EXPECT_NE(out.find("Already"), std::string::npos)
+      << "Expected duplicate var error, got: " << out;
+}
+
+TEST(Ch11Resolver, GlobalVarLookup) {
+  // Global variables should still work without resolver registration
+  EXPECT_EQ(runLox("var x = 42;\n"
+                   "print x;"),
+            "42\n");
+}
+
+TEST(Ch11Resolver, GlobalAssignment) {
+  EXPECT_EQ(runLox("var x = 1;\n"
+                   "x = 2;\n"
+                   "print x;"),
+            "2\n");
+}
+
+TEST(Ch11Resolver, RecursionStillWorks) {
+  EXPECT_EQ(
+      runLox(
+          "fun fib(n) { if (n <= 1) return n; return fib(n-2) + fib(n-1); }\n"
+          "print fib(7);"),
+      "13\n");
+}
+
+// ============================================================
+// Chapter 11 — Java vs C++ consistency
+// ============================================================
+
+TEST(Ch11Consistency, ClosureCapturesCorrectScope) {
+  expectConsistent(
+      "var a = \"global\";\n"
+      "{\n"
+      "  fun showA() {\n"
+      "    print a;\n"
+      "  }\n"
+      "  showA();\n"
+      "  var a = \"block\";\n"
+      "  showA();\n"
+      "}");
+}
+
+TEST(Ch11Consistency, ClosureKeepsEnv) {
+  expectConsistent(
+      "fun makeAdder(x) {\n"
+      "  fun add(y) { return x + y; }\n"
+      "  return add;\n"
+      "}\n"
+      "var addFive = makeAdder(5);\n"
+      "print addFive(10);");
+}
+
+TEST(Ch11Consistency, CounterClosure) {
+  expectConsistent(
+      "fun makeCounter() {\n"
+      "  var i = 0;\n"
+      "  fun count() {\n"
+      "    i = i + 1;\n"
+      "    print i;\n"
+      "  }\n"
+      "  return count;\n"
+      "}\n"
+      "var counter = makeCounter();\n"
+      "counter();\n"
+      "counter();\n"
+      "counter();");
+}
+
+TEST(Ch11Consistency, NestedScopeResolution) {
+  expectConsistent(
+      "var a = 1;\n"
+      "{\n"
+      "  var b = 2;\n"
+      "  {\n"
+      "    var c = 3;\n"
+      "    print a;\n"
+      "    print b;\n"
+      "    print c;\n"
+      "  }\n"
+      "}");
+}
+
+TEST(Ch11Consistency, GlobalAssignment) {
+  expectConsistent(
+      "var x = 1;\n"
+      "x = 2;\n"
+      "print x;");
+}
+
+TEST(Ch11Consistency, TopLevelReturnError) {
+  // Both should produce error output containing "return"
+  std::string java = runJava("return 1;");
+  std::string cpp = runLox("return 1;");
+  // Don't compare exact strings (format differs), just verify both error
+  EXPECT_NE(java.find("return"), std::string::npos);
+  EXPECT_NE(cpp.find("return"), std::string::npos);
+}
+
+TEST(Ch11Consistency, SelfReferenceInInitializer) {
+  std::string java = runJava("var a = 1;\n{\n  var a = a;\n}");
+  std::string cpp = runLox("var a = 1;\n{\n  var a = a;\n}");
+  EXPECT_NE(java.find("own initializer"), std::string::npos);
+  EXPECT_NE(cpp.find("own initializer"), std::string::npos);
+}
+
+TEST(Ch11Consistency, DuplicateVarInScope) {
+  std::string java = runJava("{\n  var a = 1;\n  var a = 2;\n}");
+  std::string cpp = runLox("{\n  var a = 1;\n  var a = 2;\n}");
+  EXPECT_NE(java.find("Already"), std::string::npos);
+  EXPECT_NE(cpp.find("Already"), std::string::npos);
+}
+
+// ============================================================
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
