@@ -68,7 +68,12 @@ public class InterpreterTest {
       Parser parser = new Parser(tokens);
       List<Stmt> stmts = parser.parse();
       if (!Lox.hadError) {
-        new Interpreter().interpret(stmts);
+        Interpreter interp2 = new Interpreter();
+        Resolver resolver = new Resolver(interp2);
+        resolver.resolve(stmts);
+        if (!Lox.hadError) {
+          interp2.interpret(stmts);
+        }
       }
     } finally {
       System.setOut(oldOut);
@@ -160,6 +165,86 @@ public class InterpreterTest {
         "+ mixed types", () -> interp.visitBinaryExpr(binary(lit(1.0), TokenType.PLUS, lit("s"))));
     assertRuntimeError(
         "* on string", () -> interp.visitBinaryExpr(binary(lit("a"), TokenType.STAR, lit(2.0))));
+
+    // ── 11. Resolver (Ch11) ───────────────────────────────────────────────
+    System.out.println("\n[11] Resolver (Ch11)");
+
+    assertEqual(
+        "closure captures correct scope",
+        "global\nglobal",
+        runProgram(
+            "var a = \"global\";\n" +
+            "{\n" +
+            "  fun showA() {\n" +
+            "    print a;\n" +
+            "  }\n" +
+            "  showA();\n" +
+            "  var a = \"block\";\n" +
+            "  showA();\n" +
+            "}"));
+
+    assertEqual(
+        "nested closure resolution",
+        "1\n2\n3",
+        runProgram(
+            "var a = 1;\n" +
+            "{\n" +
+            "  var b = 2;\n" +
+            "  {\n" +
+            "    var c = 3;\n" +
+            "    print a;\n" +
+            "    print b;\n" +
+            "    print c;\n" +
+            "  }\n" +
+            "}"));
+
+    assertEqual(
+        "closure captures enclosing variable",
+        "outer",
+        runProgram(
+            "var x = \"outer\";\n" +
+            "fun showX() { print x; }\n" +
+            "showX();"));
+
+    assertEqual(
+        "closure not affected by later shadowing",
+        "global\nglobal",
+        runProgram(
+            "var a = \"global\";\n" +
+            "{\n" +
+            "  fun showA() { print a; }\n" +
+            "  showA();\n" +
+            "  var a = \"block\";\n" +
+            "  showA();\n" +
+            "}"));
+
+    assertEqual(
+        "returned closure keeps env",
+        "15",
+        runProgram(
+            "fun makeAdder(x) {\n" +
+            "  fun add(y) { return x + y; }\n" +
+            "  return add;\n" +
+            "}\n" +
+            "var addFive = makeAdder(5);\n" +
+            "print addFive(10);"));
+
+    assertEqual(
+        "counter closure",
+        "1\n2\n3",
+        runProgram(
+            "fun makeCounter() {\n" +
+            "  var i = 0;\n" +
+            "  fun count() {\n" +
+            "    i = i + 1;\n" +
+            "    print i;\n" +
+            "  }\n" +
+            "  return count;\n" +
+            "}\n" +
+            "var counter = makeCounter();\n" +
+            "counter();\n" +
+            "counter();\n" +
+            "counter();"));
 
     // ── Summary ──────────────────────────────────────────────────────────────
     System.out.println("");

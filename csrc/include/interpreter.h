@@ -1,6 +1,7 @@
 #pragma once
 #include <exception>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -22,14 +23,17 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   /*
   interpreter class act as visitor to AST, and compute each tree's value
   */
-  Environment env;
-  Environment* current_env = &env;
+  std::shared_ptr<Environment> global_env = std::make_shared<Environment>();
+  std::shared_ptr<Environment> current_env = global_env;
+  std::unordered_map<syntax::Expr*, int> locals;
 
   Interpreter();
 
   void interpret(syntax::Expr* expr);
 
   void interpret(std::vector<std::unique_ptr<SST::Stmt>>& statements);
+
+  void resolve(syntax::Expr* expr, int depth) { locals[expr] = depth; }
 
   LoxValueType visitLiteralExpr(syntax::Literal* expr) override {
     // return LoxValueType(expr->literal);
@@ -77,10 +81,8 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
   // }
 
   void executeBlock(const std::vector<std::unique_ptr<SST::Stmt>>& statements,
-                    Environment* env) {
-    // switch environments by pointer. not need to considering parent_env
-    // problems.
-    Environment* previous = current_env;
+                    std::shared_ptr<Environment> env) {
+    std::shared_ptr<Environment> previous = current_env;
     current_env = env;
     ScopeGuard g([&]() { current_env = previous; });  // restore
     for (auto&& stmt : statements) execute(stmt.get());
@@ -88,7 +90,12 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
 
   LoxValueType visitAssignExpr(syntax::Assign* expr) override {
     LoxValueType value = evaluate(expr->value.get());
-    current_env->assign(expr->name, value);
+    auto it = locals.find(expr);
+    if (it != locals.end()) {
+      current_env->assignAt(it->second, expr->name, value);
+    } else {
+      global_env->assign(expr->name, value);
+    }
     return value;
   }
 
@@ -205,8 +212,18 @@ struct Interpreter : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     return true;
   }
 
+  LoxValueType readvariable(Lexeme::Token name, syntax::Variable* expr) {
+    try {
+      int depth = locals.at(expr);
+      return current_env->getAt(depth, name);
+
+    } catch (std::out_of_range& e) {
+      return this->global_env->get(name);  // search in global env
+    }
+  }
+
   LoxValueType visitVariableExpr(syntax::Variable* expr) override {
-    return current_env->get(expr->name);
+    return readvariable(expr->name, expr);
   }
   /*
 grab statement , call accept() of AST inside the statement. Since param visitor
@@ -230,8 +247,8 @@ is interpreter, it defined methods that calculate value from AST
   }
 
   SST::StmtVisitorType visitBlockStmt(SST::Block* stmt) override {
-    Environment new_env(this->current_env);
-    executeBlock(stmt->statements, &new_env);
+    auto new_env = std::make_shared<Environment>(this->current_env);
+    executeBlock(stmt->statements, new_env);
   }
 
   SST::StmtVisitorType visitIfStmt(SST::If* stmt) override {
@@ -251,8 +268,6 @@ is interpreter, it defined methods that calculate value from AST
   // process function declaration.
   SST::StmtVisitorType visitFunctionStmt(SST::Function* stmt) override {
     Lexeme::Token func_id = stmt->name;
-    // Object manage lifespan of loxfunction, in order to avoid func will be
-    // dtor after this function call returned.
     std::shared_ptr<LoxCallable> func =
         std::make_shared<LoxFunction>(stmt, this->current_env);
     current_env->define(std::string{func_id.lexeme}, func);

@@ -3,28 +3,29 @@
 #include <functional>
 #include <variant>
 
+#include "include/environment.h"
+#include "include/expr.h"
 #include "include/interpreter.h"
 #include "include/loxvalue.h"
 #include "include/runtimeerror.h"
 LoxValueType LoxFunction::call(interpreter::Interpreter* interpreter,
                                const std::vector<LoxValueType>& args) {
-  // create a env that binds arguments into parameters.
-  interpreter::Environment new_env(
-      this->declaration_env);  // parent env points to a env when function was
-                               // being declaring.
+  // create a new env with declaration_env as parent
+  auto new_env =
+      std::make_shared<interpreter::Environment>(this->declaration_env);
 
-  // sanity check for arguments and parameters
+  // sanity check forr arguments andd parameters
   if (args.size() != this->declaration->params.size()) {
     throw interpreter::InterpreterRuntimeError(this->declaration->name, "!");
   }
 
-  // bind
+  // bind arguments to parameters
   auto size = args.size();
-  for (auto i = 0; i < size; i++) {
-    new_env.define(std::string{this->declaration->params[i].lexeme}, args[i]);
+  for (decltype(size) i = 0; i < size; i++) {
+    new_env->define(std::string{this->declaration->params[i].lexeme}, args[i]);
   }
 
   // execute function body
-  interpreter->executeBlock(declaration->body, &new_env);
-  return LoxValueType{std::monostate{}};
+  interpreter->executeBlock(declaration->body, new_env);
+  return std::monostate{};
 }

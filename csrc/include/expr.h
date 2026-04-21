@@ -43,10 +43,16 @@ struct ASTPrinter : Visitor {
   ReturnType visitUnaryExpr(Unary* expr) override;
   ReturnType prefix_expr(std::string name, std::initializer_list<Expr*> exprs);
   std::string print(Expr* expr);
-  ReturnType visitVariableExpr(syntax::Variable* expr) override {}
-  ReturnType visitAssignExpr(syntax::Assign* expr) override {}
-  ReturnType visitLogicalExpr(syntax::Logical* expr) override {}
-  ReturnType visitCallExpr(Call* expr) override {}
+  ReturnType visitVariableExpr(syntax::Variable* expr) override {
+    return std::monostate{};
+  }
+  ReturnType visitAssignExpr(syntax::Assign* expr) override {
+    return std::monostate{};
+  }
+  ReturnType visitLogicalExpr(syntax::Logical* expr) override {
+    return std::monostate{};
+  }
+  ReturnType visitCallExpr(Call* expr) override { return std::monostate{}; }
 };
 
 struct Expr {
