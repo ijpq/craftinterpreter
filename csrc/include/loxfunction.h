@@ -66,3 +66,5 @@ struct LoxFunction : LoxCallable {
     return "<fn " + std::string{declaration->name.lexeme} + ">";
   }
 };
+
+struct LoxClass : LoxCallable {};

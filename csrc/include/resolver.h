@@ -25,6 +25,11 @@ struct Resolver : syntax::Visitor, SST::Stmt::Visitor<SST::StmtVisitorType> {
     return;
   }
 
+  SST::StmtVisitorType visitClassStmt(SST::Class* stmt) override {
+    declare(stmt->name);
+    define(stmt->name);
+  }
+
   SST::StmtVisitorType visitFunctionStmtHelper(SST::Function* stmt,
                                                FunctionType type) {
     FunctionType enclosingFunction = currentFunction;

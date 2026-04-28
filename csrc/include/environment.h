@@ -19,6 +19,7 @@ struct Environment {
   Environment(std::shared_ptr<Environment> parent_env)
       : parent_env(parent_env) {}
 
+  // init value
   void define(std::string name, LoxValueType value) {
     map.emplace(std::make_pair(name, value));
   }
@@ -51,6 +52,7 @@ struct Environment {
         name, "Undefined variable '" + std::string{name.lexeme} + "'.");
   }
 
+  // update value only, along linked env node.
   void assign(const Lexeme::Token& name, LoxValueType value) {
     if (map.find(std::string{name.lexeme}) != map.end()) {
       map.insert_or_assign(std::string{name.lexeme}, value);

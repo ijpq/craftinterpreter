@@ -9,9 +9,11 @@ using syntax::Expr;
 
 program        → statement* EOF ;
 
-declaration    → funDecl
+declaration    → classDecl 
+               | funDecl
                | varDecl
                | statement ;
+classDecl      → "class" IDENTIFIER "{" function* "}";
 funDecl        → "fun" function ;
 function       → IDENTIFIER "(" parameters? ")" block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
@@ -43,6 +45,7 @@ class If;
 class While;
 class Function;
 class Return;
+class Class;
 
 /*
 hold AST as member var, provide accept() to interpreter
@@ -51,7 +54,7 @@ struct Stmt {  // statement
   template <typename R>
   struct Visitor {
     virtual R visitBlockStmt(Block* stmt) = 0;
-    // virtual R visitClassStmt(Class* stmt) = 0;
+    virtual R visitClassStmt(Class* stmt) = 0;
     virtual R visitExpressionStmt(Expression* stmt) = 0;
     virtual R visitFunctionStmt(Function* stmt) = 0;
     virtual R visitIfStmt(If* stmt) = 0;
@@ -157,6 +160,15 @@ struct Return : Stmt {
   }
   Lexeme::Token keyword;
   std::unique_ptr<Expr> value;
+};
+
+struct Class : Stmt {
+  Lexeme::Token name;
+  std::vector<std::unique_ptr<Function>> methods;
+  Class(Lexeme::Token name, std::vector<std::unique_ptr<Function>> methods)
+      : name(name), methods(std::move(methods)) {}
+
+  StmtVisitorType accept(Stmt::Visitor<StmtVisitorType>* visitor) override {}
 };
 
 }  // namespace SST

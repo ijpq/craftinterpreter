@@ -423,9 +423,10 @@ struct Parser {
 
   // funDecl        → "fun" function ;
   // function       → IDENTIFIER "(" parameters? ")" block ;
-  std::unique_ptr<SST::Stmt> function(std::string kind) {
-    Token identifier = consume(TokenType::IDENTIFIER, "!");
-    consume(TokenType::LEFT_PAREN, "!");
+  std::unique_ptr<SST::Function> function(std::string kind) {
+    Token identifier =
+        consume(TokenType::IDENTIFIER, "Expect " + kind + " name.");
+    consume(TokenType::LEFT_PAREN, "Expect '(' after " + kind + " name.");
     std::vector<Token> param;
     if (peek().type == TokenType::IDENTIFIER) {  // have parameter
       param = parameter();
@@ -451,9 +452,24 @@ struct Parser {
     }
   }
 
+  std::unique_ptr<SST::Class> classdecalaration() {
+    Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+    consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
+
+    std::vector<std::unique_ptr<SST::Function>> methods;
+
+    while (TokenType::RIGHT_BRACE != tokens[current].type && !isAtEnd()) {
+      methods.push_back(std::move(function("method")));
+    }
+
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
+    return std::make_unique<SST::Class>(name, std::move(methods));
+  }
+
   // var/func declaration
   std::unique_ptr<SST::Stmt> declaration() {
     try {
+      if (match({TokenType::CLASS})) return classdecalaration();
       if (match({TokenType::VAR})) return varDeclaration();
       if (match({TokenType::FUN})) return function("function");
       return statement();

@@ -278,6 +278,12 @@ is interpreter, it defined methods that calculate value from AST
     if (stmt->value) value = evaluate(stmt->value.get());
     throw interpreter::Return(stmt->keyword, value, "return value");
   }
+
+  SST::StmtVisitorType visitClassStmt(SST::Class* stmt) override {
+    current_env->define(std::string{stmt->name.lexeme}, std::monostate{});
+    LoxClass kclass();
+    current_env->assign(std::string{stmt->name}, kclass);
+  }
 };
 
 }  // namespace interpreter
